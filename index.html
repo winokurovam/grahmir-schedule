@@ -321,6 +321,10 @@ h1 {
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
   <div class="sheet-inner">
     <h2 id="sheet-title">Записаться на слот</h2>
+    <div class="chips gm-choice" id="gm-choice" role="group" aria-label="Мастер" hidden>
+      <button class="chip" type="button" data-gm="club" aria-pressed="true">Нужен мастер</button>
+      <button class="chip" type="button" data-gm="own" aria-pressed="false">Свой мастер</button>
+    </div>
     <p class="message" id="message"></p>
     <p class="party" id="party" hidden></p>
     <div class="actions">
@@ -477,9 +481,11 @@ function whenText(slot) {
   return `${WEEKDAY_ON[mondayIndex(d)]}, ${d.getDate()} ${MONTH_OF[d.getMonth()]}, с ${slot.start} до ${slot.end} (${slot.room})`;
 }
 
-function messageFor(slot) {
-  return slot.status === 'recruit'
-    ? `Привет! Хочу присоединиться к игре «${slot.title}» ${whenText(slot)}.`
+// gm: 'club' — игроку нужен мастер клуба, 'own' — компания приходит со своим мастером
+function messageFor(slot, gm = 'club') {
+  if (slot.status === 'recruit') return `Привет! Хочу присоединиться к игре «${slot.title}» ${whenText(slot)}.`;
+  return gm === 'own'
+    ? `Привет! Хочу забронировать слот ${whenText(slot)}. Мастер у нас уже есть.`
     : `Привет! Хочу записаться на игру с вашим мастером ${whenText(slot)}.`;
 }
 
@@ -604,6 +610,22 @@ function renderRooms() {
 }
 
 let lastFocus = null;
+let sheetSlot = null;
+
+// Текст сообщения администратору и ссылка на Telegram для выбранного варианта мастера
+function setMessage(slot, gm) {
+  const text = messageFor(slot, gm);
+  $('message').textContent = text;
+  $('tg-link').href = `https://t.me/${encodeURIComponent(CONFIG.TELEGRAM_USERNAME)}?text=${encodeURIComponent(text)}`;
+  $('copy').textContent = 'Скопировать текст';
+  document.querySelectorAll('#gm-choice .chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gm === gm)));
+  // Минимум игроков важен, когда играют с мастером клуба
+  const needParty = slot.status === 'free' && gm === 'club';
+  $('party').hidden = !needParty;
+  if (needParty) $('party').innerHTML = `<strong>Обратите внимание:</strong> чтобы игра состоялась, нужно собрать ${CONFIG.PARTY_SIZE} игроков.`;
+}
+document.querySelectorAll('#gm-choice .chip').forEach(b =>
+  b.addEventListener('click', () => { if (sheetSlot) setMessage(sheetSlot, b.dataset.gm); }));
 function openSheet(slot, trigger) {
   lastFocus = trigger;
   // Набор с постом: записываются плюсом под постом, а не сообщением администратору
@@ -611,9 +633,9 @@ function openSheet(slot, trigger) {
   $('tg-link').hidden = viaPost;
   $('copy').hidden = viaPost;
   $('post-link').hidden = !viaPost;
-  const free = slot.status === 'free';
-  $('party').hidden = !free;
-  if (free) $('party').innerHTML = `<strong>Обратите внимание:</strong> чтобы игра состоялась, нужно собрать ${CONFIG.PARTY_SIZE} игроков.`;
+  sheetSlot = slot;
+  $('gm-choice').hidden = slot.status !== 'free';
+  $('party').hidden = true;
   if (viaPost) {
     $('sheet-title').textContent = 'Присоединиться к игре';
     const d = slot.dateObj;
@@ -633,11 +655,9 @@ function openSheet(slot, trigger) {
     $('post-link').href = slot.post;
     $('hint').textContent = `Если не получается, напишите администратору: @${CONFIG.TELEGRAM_USERNAME}.`;
   } else {
-    const text = messageFor(slot);
     $('message').classList.remove('join');
     $('sheet-title').textContent = slot.status === 'recruit' ? 'Присоединиться к игре' : 'Записаться на слот';
-    $('message').textContent = text;
-    $('tg-link').href = `https://t.me/${encodeURIComponent(CONFIG.TELEGRAM_USERNAME)}?text=${encodeURIComponent(text)}`;
+    setMessage(slot, 'club');
     $('hint').textContent = `Если текст не подставился в Telegram сам, скопируйте его и отправьте @${CONFIG.TELEGRAM_USERNAME}.`;
     $('copy').textContent = 'Скопировать текст';
   }
