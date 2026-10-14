@@ -133,6 +133,8 @@ h1 {
 .games .g-room { flex: none; display: inline-flex; align-items: center; gap: 6px; min-width: 84px; }
 .games .g-room::before { content: ""; width: 6px; height: 6px; transform: rotate(45deg); border-radius: 1px; background: var(--gem, var(--gem-other)); opacity: .8; }
 .games .g-title { min-width: 0; overflow-wrap: anywhere; }
+.sys-logo { display: inline-block; width: 1.3em; height: 1.3em; margin-right: 6px; vertical-align: -.3em; object-fit: contain; }
+.games .sys-logo { width: 1.25em; height: 1.25em; opacity: .8; }
 .games .g-full { color: var(--gem-emerald); opacity: .85; }
 
 .slot {
@@ -312,6 +314,11 @@ const ROOM_COLORS = {
   topaz: 'var(--gem-topaz)',
   emerald: 'var(--gem-emerald)',
 };
+// Логотипы игровых систем: значок ставится, если название игры подходит под match.
+// Новая система: положите картинку в assets/systems/ и добавьте строку сюда.
+const SYSTEMS = [
+  { name: 'D&D', logo: 'assets/systems/dnd.svg', match: /d&d|dnd|днд|icewind dale/i },
+];
 /* =============================================== */
 
 const WEEKDAY = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
@@ -325,6 +332,25 @@ const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')
 const fromYmd = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 const mondayIndex = date => (date.getDay() + 6) % 7;
 const minutes = hhmm => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
+const systemOf = title => SYSTEMS.find(s => s.match.test(title || ''));
+
+// Название игры с логотипом системы, если он есть
+function fillTitle(el, title) {
+  el.textContent = '';
+  const sys = systemOf(title);
+  if (sys) {
+    const img = document.createElement('img');
+    img.className = 'sys-logo';
+    img.src = sys.logo;
+    img.alt = sys.name;
+    img.title = sys.name;
+    img.width = 18;
+    img.height = 18;
+    el.appendChild(img);
+  }
+  el.appendChild(document.createTextNode(title));
+}
+
 const gemColor = name => ROOM_COLORS[String(name).trim().toLowerCase()] || 'var(--gem-other)';
 
 function plural(n, one, few, many) {
@@ -453,7 +479,7 @@ function render() {
         <span class="slot-room"></span>${slot.title ? '<span class="slot-title"></span>' : ''}
         <span class="slot-note">${note}</span>`;
       el.querySelector('.slot-room').textContent = slot.room;
-      if (slot.title) el.querySelector('.slot-title').textContent = slot.title;
+      if (slot.title) fillTitle(el.querySelector('.slot-title'), slot.title);
       if (open) {
         el.type = 'button';
         el.setAttribute('aria-label', `${slot.view === 'recruit' ? 'Присоединиться к игре ' + slot.title : 'Записаться'}: ${WEEKDAY[day.wd]}, ${slot.start}–${slot.end}, ${slot.room}`);
@@ -474,7 +500,7 @@ function render() {
           (g.view === 'full' ? '<span class="g-full">набор закрыт</span>' : '');
         li.querySelector('.g-room').textContent = g.room;
         li.querySelector('.g-room').style.setProperty('--gem', gemColor(g.room));
-        li.querySelector('.g-title').textContent = g.title;
+        fillTitle(li.querySelector('.g-title'), g.title);
         ul.appendChild(li);
       });
       body.appendChild(ul);
