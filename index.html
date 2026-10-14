@@ -131,18 +131,19 @@ h1 {
   display: grid;
   grid-template-columns: max-content max-content minmax(0, 1fr);
   gap: 5px 14px;
-  align-items: baseline;
+  align-items: start;
+  line-height: 20px;
   font-size: 13px; color: var(--muted);
 }
 .games li.games-label { display: block; grid-column: 1 / -1; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; opacity: .75; }
 /* Строки — части общей сетки, поэтому колонки времени, комнаты и игры совпадают во всех строках */
 .games li { display: contents; }
 .games .g-time { white-space: nowrap; }
-.games .g-room { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-.games .g-room::before { content: ""; width: 6px; height: 6px; transform: rotate(45deg); border-radius: 1px; background: var(--gem, var(--gem-other)); opacity: .8; }
+.games .g-room { white-space: nowrap; }
+.games .g-room::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 7px; vertical-align: 1px; transform: rotate(45deg); border-radius: 1px; background: var(--gem, var(--gem-other)); opacity: .8; }
 .games .g-title { min-width: 0; overflow-wrap: anywhere; }
 .sys-logo { display: inline-block; width: 1.3em; height: 1.3em; margin-right: 6px; vertical-align: -.3em; object-fit: contain; }
-.games .sys-logo { width: 1.25em; height: 1.25em; opacity: .8; }
+.games .sys-logo { width: 16px; height: 16px; vertical-align: -3px; opacity: .8; }
 .games .g-full { color: var(--gem-emerald); opacity: .85; white-space: nowrap; }
 
 .slot {
