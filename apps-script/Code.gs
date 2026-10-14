@@ -27,6 +27,9 @@
  */
 
 const SHEET_NAME = 'Расписание';
+// Если скрипт создан отдельно (script.google.com), а не через «Расширения → Apps Script»
+// в самой таблице, впишите сюда ID таблицы — часть ссылки между /d/ и /edit.
+const SPREADSHEET_ID = '1g-GDEil6gMo7it2dM5_aCZ7-KtBBttY4vdvucrRHDRI';
 const WEEKDAY_TIME = {
   'день': ['13:00', '17:00'],
   'вечер': ['19:30', '23:30'],
@@ -40,7 +43,7 @@ const WEEKDAYS = ['понедельник', 'вторник', 'среда', 'ч�
 const MONTHS = [/^янв/, /^фев/, /^мар/, /^апр/, /^ма[йя]/, /^июн/, /^июл/, /^авг/, /^сен/, /^окт/, /^ноя/, /^дек/];
 
 function doGet() {
-  const book = SpreadsheetApp.getActiveSpreadsheet();
+  const book = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = book.getSheetByName(SHEET_NAME) || book.getSheets()[0];
   const range = sheet.getDataRange();
   const extras = range.getNotes().map((row, r) => row.map((note, c) => `${note} ${linkUrls(range, r, c)}`));
