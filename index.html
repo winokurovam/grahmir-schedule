@@ -123,7 +123,7 @@ h1 {
 .day-name { font: 700 20px/1.2 var(--font-display); text-transform: capitalize; }
 .day-date { color: var(--muted); font-size: 14px; }
 .day-tag { display: inline-block; margin-top: 6px; color: var(--ember); font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
-.slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; align-items: start; }
 .empty-day { color: var(--muted); align-self: center; }
 .day-body { display: grid; gap: 12px; min-width: 0; }
 .games {
@@ -148,6 +148,7 @@ h1 {
 
 .slot {
   display: grid;
+  align-content: start;
   gap: 2px;
   text-align: left;
   padding: 12px 14px;
@@ -177,6 +178,8 @@ h1 {
 .slot.recruit .slot-note { color: var(--pink); font-weight: 600; }
 .slot.recruit:hover { transform: translateY(-1px); border-color: var(--pink); box-shadow: 0 6px 18px rgba(242, 139, 198, .14); }
 .slot.recruit:focus-visible { outline: 3px solid var(--ember); outline-offset: 2px; }
+.slot.announce { background: transparent; border: 1px dashed var(--pink-line); }
+.slot.announce .slot-note { color: var(--pink); font-weight: 600; opacity: .85; }
 .chip .gem { display: inline-block; width: 8px; height: 8px; margin-right: 7px; transform: rotate(45deg); border-radius: 1px; background: var(--gem, var(--gem-other)); vertical-align: 1px; }
 .slot.free {
   background: var(--teal-bg);
@@ -445,7 +448,9 @@ function buildDays() {
       .filter(s => s.date === key && (state.room === 'all' || s.room === state.room))
       .map(s => {
         const started = i === 0 && minutes(s.start) <= nowMin;
-        return { ...s, dateObj: date, view: started && (s.status === 'free' || s.status === 'recruit') ? 'past' : s.status };
+        // Набор без поста — анонс «скоро»: слот занят под игру, записаться пока нельзя
+        const view = s.status === 'recruit' && !s.post ? 'announce' : s.status;
+        return { ...s, dateObj: date, view: started && (view === 'free' || view === 'recruit') ? 'past' : view };
       })
       .sort((a, b) => minutes(a.start) - minutes(b.start) || a.room.localeCompare(b.room));
     days.push({ date, wd: mondayIndex(date), offset: i, known: known.has(key), slots });
@@ -482,7 +487,7 @@ function render() {
   days.forEach(day => {
     const cards = day.slots.filter(s => s.view !== 'campaign' && s.view !== 'full');
     const games = day.slots.filter(s => s.view === 'campaign' || s.view === 'full');
-    const shown = cards.filter(s => s.view === 'free' || s.view === 'recruit');
+    const shown = cards.filter(s => s.view === 'free' || s.view === 'recruit' || s.view === 'announce');
     const row = document.createElement('section');
     row.className = 'day';
     const tag = day.offset === 0 ? 'Сегодня' : day.offset === 1 ? 'Завтра' : '';
@@ -507,7 +512,8 @@ function render() {
       el.className = `slot ${slot.view}`;
       el.style.setProperty('--gem', gemColor(slot.room));
       const note = slot.view === 'free' ? `Свободно · ${hoursLabel(slot.start, slot.end)}`
-        : slot.view === 'recruit' ? (slot.post ? 'Идёт набор · есть пост' : 'Идёт набор · присоединиться')
+        : slot.view === 'recruit' ? 'Идёт набор · есть пост'
+        : slot.view === 'announce' ? 'Скоро пост о наборе'
         : slot.view === 'full' ? 'Набор закрыт'
         : slot.view === 'past' ? 'Уже началось' : 'Занято';
       el.innerHTML = `<span class="slot-time">${slot.start}–${slot.end}</span>
