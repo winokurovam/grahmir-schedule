@@ -310,7 +310,7 @@ h1 {
     <p class="message" id="message"></p>
     <div class="actions">
       <a class="btn primary" id="tg-link" href="#" target="_blank" rel="noopener">Написать в Telegram</a>
-      <a class="btn primary" id="post-link" href="#" target="_blank" rel="noopener" hidden>Открыть пост</a>
+      <a class="btn primary" id="post-link" href="#" target="_blank" rel="noopener" hidden>Открыть пост в Telegram</a>
       <button class="btn" id="copy" type="button">Скопировать текст</button>
       <button class="btn" id="close" type="button">Отмена</button>
     </div>
@@ -510,7 +510,7 @@ function render() {
       el.className = `slot ${slot.view}`;
       el.style.setProperty('--gem', gemColor(slot.room));
       const note = slot.view === 'free' ? `Свободно · ${hoursLabel(slot.start, slot.end)}`
-        : slot.view === 'recruit' ? 'Идёт набор · «+» под постом'
+        : slot.view === 'recruit' ? 'Идёт набор · записаться'
         : slot.view === 'announce' ? 'Скоро пост о наборе'
         : slot.view === 'full' ? 'Набор закрыт'
         : slot.view === 'past' ? 'Уже началось' : 'Занято';
@@ -597,7 +597,7 @@ function openSheet(slot, trigger) {
   $('post-link').hidden = !viaPost;
   if (viaPost) {
     $('sheet-title').textContent = 'Присоединиться к игре';
-    $('message').textContent = `«${slot.title}» ${whenText(slot)}.\n\nЧтобы записаться, откройте пост и поставьте «+» в комментариях под ним.`;
+    $('message').textContent = `«${slot.title}» ${whenText(slot)}.\n\nЧтобы записаться, поставьте «+» в комментариях под постом в Telegram.`;
     $('post-link').href = slot.post;
     $('hint').textContent = `Если не получается, напишите администратору: @${CONFIG.TELEGRAM_USERNAME}.`;
   } else {
