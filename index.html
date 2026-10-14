@@ -242,6 +242,11 @@ h1 {
   user-select: all;
   white-space: pre-wrap;
 }
+.message.join { display: grid; gap: 4px; user-select: text; white-space: normal; }
+.join-game { font-size: 17px; font-weight: 600; overflow-wrap: anywhere; }
+.join-when { color: var(--muted); font-size: 14px; }
+.join-when::first-letter { text-transform: uppercase; }
+.join-how { margin-top: 10px; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -597,11 +602,25 @@ function openSheet(slot, trigger) {
   $('post-link').hidden = !viaPost;
   if (viaPost) {
     $('sheet-title').textContent = 'Присоединиться к игре';
-    $('message').textContent = `«${slot.title}» ${whenText(slot)}.\n\nЧтобы записаться, поставьте «+» в комментариях под постом в Telegram.`;
+    const d = slot.dateObj;
+    const msg = $('message');
+    msg.textContent = '';
+    msg.classList.add('join');
+    const game = document.createElement('span');
+    game.className = 'join-game';
+    fillTitle(game, slot.title);
+    const when = document.createElement('span');
+    when.className = 'join-when';
+    when.textContent = `${WEEKDAY[mondayIndex(d)]}, ${d.getDate()} ${MONTH_OF[d.getMonth()]} · ${slot.start}–${slot.end} · ${slot.room}`;
+    const how = document.createElement('span');
+    how.className = 'join-how';
+    how.textContent = 'Чтобы записаться, поставьте «+» в комментариях под постом в Telegram.';
+    msg.append(game, when, how);
     $('post-link').href = slot.post;
     $('hint').textContent = `Если не получается, напишите администратору: @${CONFIG.TELEGRAM_USERNAME}.`;
   } else {
     const text = messageFor(slot);
+    $('message').classList.remove('join');
     $('sheet-title').textContent = slot.status === 'recruit' ? 'Присоединиться к игре' : 'Записаться на слот';
     $('message').textContent = text;
     $('tg-link').href = `https://t.me/${encodeURIComponent(CONFIG.TELEGRAM_USERNAME)}?text=${encodeURIComponent(text)}`;
