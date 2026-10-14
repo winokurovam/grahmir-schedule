@@ -14,17 +14,21 @@
  *   без заливки и без текста — в это время клуб не работает, на сайте слота нет.
  *
  * Время берётся из текста ячейки («19:30-23:30 …»). У пустых ячеек — из соседних
- * комнат в тот же день и то же время суток, а если там пусто — из DEFAULT_TIME.
+ * комнат в тот же день и то же время суток, а если там пусто — из часов работы
+ * клуба: WEEKDAY_TIME для будней, WEEKEND_TIME для субботы и воскресенья.
  *
  * Наружу уходит только «свободно / набор / занято». Названия кампаний и аренды
  * сайт не получает, кроме названий игр, на которые идёт набор.
  */
 
 const SHEET_NAME = 'Расписание';
-const DEFAULT_TIME = {
-  'утро': ['10:00', '13:00'],
+const WEEKDAY_TIME = {
   'день': ['13:00', '17:00'],
   'вечер': ['19:30', '23:30'],
+};
+const WEEKEND_TIME = {
+  'день': ['13:00', '17:00'],
+  'вечер': ['18:00', '22:00'],
 };
 
 const WEEKDAYS = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
@@ -74,7 +78,7 @@ function parseSchedule(values, backgrounds, now) {
     }
 
     const firstDayCol = Math.min.apply(null, Object.keys(dayCols).map(Number));
-    const period = row.slice(0, firstDayCol).map(v => v.toLowerCase()).find(v => DEFAULT_TIME[v]);
+    const period = row.slice(0, firstDayCol).map(v => v.toLowerCase()).find(v => WEEKDAY_TIME[v]);
     if (!period) return;
 
     if (row[0]) {
@@ -86,6 +90,7 @@ function parseSchedule(values, backgrounds, now) {
     Object.keys(dateCols).forEach(c => {
       cells.push({
         date: dateCols[c],
+        weekday: dayCols[c],
         room,
         period,
         text: row[c],
@@ -103,7 +108,8 @@ function parseSchedule(values, backgrounds, now) {
     else if (cell.text) status = 'busy';
     else return;
 
-    const time = cell.time || timeFromNeighbours(cells, cell) || DEFAULT_TIME[cell.period];
+    const hours = cell.weekday >= 5 ? WEEKEND_TIME : WEEKDAY_TIME;
+    const time = cell.time || timeFromNeighbours(cells, cell) || hours[cell.period];
     const slot = { date: cell.date, start: time[0], end: time[1], room: cell.room, status };
     if (status === 'recruit') slot.title = gameTitle(cell.text);
     slots.push(slot);
