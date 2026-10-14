@@ -142,8 +142,8 @@ h1 {
 .games .g-room { white-space: nowrap; }
 .games .g-room::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 7px; vertical-align: 1px; transform: rotate(45deg); border-radius: 1px; background: var(--gem, var(--gem-other)); opacity: .8; }
 .games .g-title { min-width: 0; overflow-wrap: anywhere; }
-.sys-logo { display: inline-block; width: 1.3em; height: 1.3em; margin-right: 6px; vertical-align: -.3em; object-fit: contain; }
-.games .sys-logo { width: 16px; height: 16px; vertical-align: -3px; opacity: .8; }
+.sys-logo { display: inline-block; width: auto; height: 1.3em; margin-right: 6px; vertical-align: -.3em; object-fit: contain; }
+.games .sys-logo { width: auto; height: 16px; vertical-align: -3px; opacity: .8; }
 .games .g-full { color: var(--gem-emerald); opacity: .85; white-space: nowrap; }
 
 .slot {
@@ -336,6 +336,19 @@ const ROOM_COLORS = {
 // Новая система: положите картинку в assets/systems/ и добавьте строку сюда.
 const SYSTEMS = [
   { name: 'D&D', logo: 'assets/systems/dnd.svg', match: /d&d|dnd|днд|icewind dale/i },
+  { name: 'Call of Cthulhu', logo: 'assets/systems/cthulhu.svg', match: /cthulhu|ктулху/i },
+  { name: 'Cortex Prime', logo: 'assets/systems/cortex.svg', match: /cortex/i },
+  { name: 'Fabula Ultima', logo: 'assets/systems/fabula.svg', match: /fabula/i },
+  { name: 'Grimwild', logo: 'assets/systems/grimwild.png', match: /grimwild/i },
+  { name: 'Starfinder', logo: 'assets/systems/starfinder.png', match: /starfinder/i },
+  { name: 'Star Wars', logo: 'assets/systems/starwars.png', match: /star wars|edge of the empire|age of rebellion|force and destiny/i, ratio: 93 / 40 },
+  { name: 'Mothership', logo: 'assets/systems/mothership.svg', match: /mothership/i },
+  { name: 'Pendragon', logo: 'assets/systems/pendragon.svg', match: /pendragon/i },
+  { name: 'Scum & Villainy', logo: 'assets/systems/scum.svg', match: /scum\s*(&|and|и)\s*villainy/i },
+  { name: 'Blades in the Dark', logo: 'assets/systems/blades.svg', match: /blades in the dark/i },
+  { name: 'Trench Crusade', logo: 'assets/systems/trench.svg', match: /trench crusade/i },
+  { name: 'Vampire', logo: 'assets/systems/vampire.svg', match: /vampire|вампир/i },
+  { name: 'World of Darkness', logo: 'assets/systems/wod.svg', match: /world of darkness|\bwod\b/i },
 ];
 /* =============================================== */
 
@@ -362,7 +375,7 @@ function fillTitle(el, title) {
     img.src = sys.logo;
     img.alt = sys.name;
     img.title = sys.name;
-    img.width = 18;
+    img.width = Math.round(18 * (sys.ratio || 1));
     img.height = 18;
     el.appendChild(img);
   }
