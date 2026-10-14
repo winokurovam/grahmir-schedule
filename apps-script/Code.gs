@@ -12,7 +12,7 @@
  *   розовый      — идёт набор на игру, к ней можно присоединиться;
  *   зелёный      — набор закрыт, команда собрана (на сайте видно название игры);
  *   синий        — идёт кампания (на сайте видно название игры и мастера);
- *   другой цвет  — слот занят, например аренда (на сайте только «занято»);
+ *   другой цвет  — слот занят, например аренда; на сайт не попадает;
  *   без заливки и без текста — в это время клуб не работает, на сайте слота нет.
  *
  * Время берётся из текста ячейки («19:30-23:30 …»). У пустых ячеек — из соседних
@@ -22,8 +22,8 @@
  * Пост о наборе: ссылку на пост в Telegram (t.me/…) вставьте в примечание к розовой
  * ячейке или сделайте ссылкой сам текст ячейки. На сайте появится кнопка «Пост о наборе».
  *
- * Названия уходят на сайт только у розовых, зелёных и синих ячеек. Текст остальных
- * занятых ячеек (аренда) сайт не получает.
+ * На сайт уходят только бирюзовые, красные, розовые, зелёные и синие ячейки.
+ * Аренда и другие цвета остаются внутри таблицы.
  */
 
 const SHEET_NAME = 'Расписание';
@@ -122,7 +122,6 @@ function parseSchedule(values, backgrounds, now, extras) {
     else if (cell.kind === 'pink') status = 'recruit';
     else if (cell.kind === 'green') status = 'full';
     else if (cell.kind === 'blue' && cell.text) status = 'campaign';
-    else if (cell.text) status = 'busy';
     else return;
 
     const hours = cell.weekday >= 5 ? WEEKEND_TIME : WEEKDAY_TIME;
@@ -137,7 +136,8 @@ function parseSchedule(values, backgrounds, now, extras) {
   });
 
   slots.sort((a, b) => (a.date + a.start + a.room).localeCompare(b.date + b.start + b.room));
-  return { updated: now.toISOString(), rooms, slots };
+  const dates = [...new Set(cells.map(c => c.date))].sort();
+  return { updated: now.toISOString(), rooms, dates, slots };
 }
 
 function timeFromNeighbours(cells, cell) {

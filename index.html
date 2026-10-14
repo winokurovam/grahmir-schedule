@@ -109,7 +109,6 @@ h1 {
 .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; }
 .legend .l-free { background: var(--teal-bg); border: 1px solid var(--teal-line); }
 .legend .l-recruit { background: var(--pink-bg); border: 1px solid var(--pink-line); }
-.legend .l-busy { background: repeating-linear-gradient(135deg, var(--busy-a) 0 4px, var(--busy-b) 4px 8px); border: 1px solid var(--line); }
 
 /* Board */
 .board { display: grid; border-top: 1px solid var(--line); }
@@ -266,13 +265,11 @@ h1 {
 
   <section class="controls" aria-label="Фильтры">
     <div class="chips" id="rooms" role="group" aria-label="Стол"></div>
-    <label class="toggle"><input type="checkbox" id="only-free" checked> Скрыть занятые</label>
   </section>
 
   <div class="legend" aria-hidden="true">
     <span><i class="l-free"></i>Свободно</span>
     <span><i class="l-recruit"></i>Идёт набор на игру</span>
-    <span><i class="l-busy"></i>Занято</span>
   </div>
 
   <div id="demo-note" class="notice" hidden>
@@ -325,7 +322,7 @@ const WEEKDAY = ['понедельник', 'вторник', 'среда', 'че
 const WEEKDAY_ON = ['в понедельник', 'во вторник', 'в среду', 'в четверг', 'в пятницу', 'в субботу', 'в воскресенье'];
 const MONTH_OF = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
 
-const state = { rooms: [], slots: [], room: 'all', hideBusy: true, updated: null, demo: false };
+const state = { rooms: [], dates: [], slots: [], room: 'all', updated: null, demo: false };
 const $ = id => document.getElementById(id);
 
 const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -378,13 +375,14 @@ function demoData() {
     const times = wd >= 5 ? [['13:00', '17:00'], ['18:00', '22:00']] : [['19:30', '23:30']];
     rooms.forEach((room, r) => times.forEach(([start, end], t) => {
       const k = (i * 7 + r * 3 + t * 5) % 11;
-      const status = k === 0 || k === 6 ? 'free' : k === 3 ? 'recruit' : 'busy';
+      const status = k === 0 || k === 6 ? 'free' : k === 3 ? 'recruit' : 'campaign';
       const slot = { date: ymd(date), start, end, room, status };
+      if (status === 'campaign') slot.title = 'Кампания D&D';
       if (status === 'recruit') slot.title = 'Новая кампания D&D';
       slots.push(slot);
     }));
   }
-  return { updated: today.toISOString(), rooms: rooms.map(name => ({ name })), slots };
+  return { updated: today.toISOString(), rooms: rooms.map(name => ({ name })), dates: [...new Set(slots.map(s => s.date))], slots };
 }
 
 async function load() {
@@ -398,8 +396,9 @@ function buildDays() {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  const known = new Set(state.slots.map(s => s.date));
-  const last = state.slots.reduce((max, s) => (s.date > max ? s.date : max), '');
+  const dates = state.dates.length ? state.dates : state.slots.map(s => s.date);
+  const known = new Set(dates);
+  const last = dates.reduce((max, d) => (d > max ? d : max), '');
   let count = last ? Math.round((fromYmd(last) - today) / 864e5) + 1 : 7;
   count = Math.max(1, Math.min(count, CONFIG.MAX_DAYS));
 
@@ -447,7 +446,7 @@ function render() {
   days.forEach(day => {
     const cards = day.slots.filter(s => s.view !== 'campaign' && s.view !== 'full');
     const games = day.slots.filter(s => s.view === 'campaign' || s.view === 'full');
-    const shown = state.hideBusy ? cards.filter(s => s.view === 'free' || s.view === 'recruit') : cards;
+    const shown = cards.filter(s => s.view === 'free' || s.view === 'recruit');
     const row = document.createElement('section');
     row.className = 'day';
     const tag = day.offset === 0 ? 'Сегодня' : day.offset === 1 ? 'Завтра' : '';
@@ -463,7 +462,7 @@ function render() {
       const empty = document.createElement('div');
       empty.className = 'empty-day';
       empty.textContent = !day.known ? 'Расписания на этот день пока нет'
-        : day.slots.length ? 'Свободных мест нет' : 'Клуб не работает';
+        : 'Свободных мест нет';
       list.appendChild(empty);
     }
     shown.forEach(slot => {
@@ -576,12 +575,12 @@ $('copy').addEventListener('click', () => {
     navigator.clipboard.writeText(text).then(done, fallback);
   } catch (e) { fallback(); }
 });
-$('only-free').addEventListener('change', e => { state.hideBusy = e.target.checked; render(); });
 
 load()
   .then(data => {
     state.rooms = data.rooms || [];
-    state.slots = data.slots || [];
+    state.slots = (data.slots || []).filter(s => s.status !== 'busy');
+    state.dates = data.dates || [];
     state.updated = data.updated;
     $('demo-note').hidden = !state.demo;
     if (state.demo && window.DEMO_NOTE) $('demo-note').innerHTML = window.DEMO_NOTE;
