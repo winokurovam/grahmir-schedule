@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Grahmir's Dungeon — свободные столы</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Расписание свободных слотов для игр в клубе. Нажмите на свободный слот, чтобы записаться через Telegram.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Philosopher:wght@400;700&family=Golos+Text:wght@400;500;600&display=swap">
+<style>
+/* Layout: one column "board" — a row per day, slot tokens wrapping inside it; booking happens in a bottom sheet. */
+:root {
+  --bg: #EEEDF2;
+  --surface: #FFFFFF;
+  --ink: #1C1A26;
+  --muted: #676379;
+  --line: #D8D5E1;
+  --gold: #8E6210;
+  --free: #136B4A;
+  --free-bg: #E1F2E9;
+  --free-line: #9CD3B8;
+  --busy-a: #E4E2EA;
+  --busy-b: #DAD7E2;
+  --shadow: 0 10px 40px rgba(28, 26, 38, .18);
+  --font-display: "Philosopher", "Georgia", serif;
+  --font-body: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #13121A; --surface: #1D1B27; --ink: #ECEAF4; --muted: #9D99AE; --line: #322F3F;
+    --gold: #DDB15C; --free: #5AD6A0; --free-bg: #15332A; --free-line: #2E6B53;
+    --busy-a: #22202C; --busy-b: #282634; --shadow: 0 10px 40px rgba(0, 0, 0, .5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #13121A; --surface: #1D1B27; --ink: #ECEAF4; --muted: #9D99AE; --line: #322F3F;
+  --gold: #DDB15C; --free: #5AD6A0; --free-bg: #15332A; --free-line: #2E6B53;
+  --busy-a: #22202C; --busy-b: #282634; --shadow: 0 10px 40px rgba(0, 0, 0, .5);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 15px/1.5 var(--font-body);
+  font-variant-numeric: tabular-nums;
+}
+[hidden] { display: none !important; }
+
+.wrap {
+  max-width: 980px;
+  margin: 0 auto;
+  padding-block: 32px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 28px;
+}
+
+/* Header */
+.top { display: grid; gap: 14px; }
+.brand { display: flex; align-items: center; gap: 12px; color: var(--gold); }
+.brand svg { width: 34px; height: 34px; flex: none; }
+.brand span { font: 700 13px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; }
+h1 {
+  margin: 0;
+  font: 700 clamp(30px, 6vw, 46px)/1.08 var(--font-display);
+  text-wrap: balance;
+}
+.lead { margin: 0; max-width: 60ch; color: var(--muted); font-size: 16px; }
+.summary { margin: 0; font-weight: 500; }
+.summary b { color: var(--free); font-weight: 600; }
+
+/* Controls */
+.controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  font: 500 14px/1 var(--font-body);
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 9px 14px;
+  cursor: pointer;
+}
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.toggle { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; cursor: pointer; }
+.toggle input { width: 18px; height: 18px; accent-color: var(--free); margin: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--muted); font-size: 13px; }
+.legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; }
+.legend .l-free { background: var(--free-bg); border: 1px solid var(--free-line); }
+.legend .l-busy { background: repeating-linear-gradient(135deg, var(--busy-a) 0 4px, var(--busy-b) 4px 8px); }
+
+/* Board */
+.board { display: grid; gap: 0; border-top: 1px solid var(--line); }
+.day {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 16px;
+  padding-block: 18px;
+  border-bottom: 1px solid var(--line);
+}
+.day-name { font: 700 20px/1.2 var(--font-display); text-transform: capitalize; }
+.day-date { color: var(--muted); font-size: 14px; }
+.day-tag { display: inline-block; margin-top: 6px; color: var(--gold); font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.empty-day { color: var(--muted); align-self: center; }
+
+.slot {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  font: inherit;
+  color: inherit;
+  min-width: 0;
+}
+.slot-time { font-size: 19px; font-weight: 600; letter-spacing: -.01em; }
+.slot-room { font-size: 14px; overflow-wrap: anywhere; }
+.slot-note { font-size: 13px; color: var(--muted); }
+.slot.free {
+  background: var(--free-bg);
+  border-color: var(--free-line);
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.slot.free .slot-note { color: var(--free); font-weight: 600; }
+.slot.free:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(19, 107, 74, .18); }
+.slot.free:focus-visible, .chip:focus-visible, .btn:focus-visible, .toggle input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.slot.busy, .slot.past {
+  background: repeating-linear-gradient(135deg, var(--busy-a) 0 6px, var(--busy-b) 6px 12px);
+  color: var(--muted);
+}
+.slot.past { opacity: .6; }
+
+.notice {
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 14px;
+}
+.notice strong { color: var(--ink); }
+.footer { color: var(--muted); font-size: 13px; }
+.footer a { color: inherit; }
+
+/* Booking sheet */
+.scrim { position: fixed; inset: 0; background: rgba(10, 9, 16, .45); z-index: 10; }
+.sheet {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 11;
+  background: var(--surface);
+  border-radius: 18px 18px 0 0;
+  box-shadow: var(--shadow);
+  padding-top: 22px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+}
+.sheet-inner { max-width: 520px; margin: 0 auto; display: grid; gap: 14px; }
+.sheet h2 { margin: 0; font: 700 24px/1.2 var(--font-display); }
+.message {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  user-select: all;
+  white-space: pre-wrap;
+}
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 18px;
+  border-radius: var(--radius);
+  font: 600 15px/1 var(--font-body);
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+.btn.primary { background: var(--free); border-color: var(--free); color: var(--surface); flex: 1 1 200px; }
+.hint { margin: 0; color: var(--muted); font-size: 13px; }
+
+@media (max-width: 640px) {
+  .wrap { padding-block: 22px 48px; gap: 22px; }
+  .day { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .day-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .day-tag { margin-top: 0; }
+  .slots { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slot.free { transition: none; }
+  .slot.free:hover { transform: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 64 64" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round">
+        <path d="M32 4 56 18v28L32 60 8 46V18Z"/>
+        <path d="M32 4 18 26h28Z M18 26 8 46 M46 26l10 20 M18 26l14 22 14-22 M32 48v12 M8 18l10 8 M56 18l-10 8 M8 46l24 2 24-2"/>
+      </svg>
+      <span id="club-name">Grahmir's Dungeon</span>
+    </div>
+    <h1>Свободные столы на неделю</h1>
+    <p class="lead">Зелёные слоты свободны. Нажмите на любой, и откроется Telegram с готовым сообщением администратору.</p>
+    <p class="summary" id="summary">Загружаем расписание…</p>
+  </header>
+
+  <section class="controls" aria-label="Фильтры">
+    <div class="chips" id="rooms" role="group" aria-label="Стол"></div>
+    <label class="toggle"><input type="checkbox" id="only-free" checked> Только свободные</label>
+  </section>
+
+  <div class="legend" aria-hidden="true">
+    <span><i class="l-free"></i>Свободно, можно записаться</span>
+    <span><i class="l-busy"></i>Занято</span>
+  </div>
+
+  <div id="demo-note" class="notice" hidden>
+    <strong>Это пример расписания.</strong> Когда в настройках появится ссылка на вашу таблицу, здесь будут настоящие слоты.
+  </div>
+  <div id="error" class="notice" hidden></div>
+
+  <main class="board" id="board" aria-live="polite"></main>
+
+  <p class="footer" id="footer"></p>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
+  <div class="sheet-inner">
+    <h2 id="sheet-title">Записаться на слот</h2>
+    <p class="message" id="message"></p>
+    <div class="actions">
+      <a class="btn primary" id="tg-link" href="#" target="_blank" rel="noopener">Написать в Telegram</a>
+      <button class="btn" id="copy" type="button">Скопировать текст</button>
+      <button class="btn" id="close" type="button">Отмена</button>
+    </div>
+    <p class="hint" id="hint"></p>
+  </div>
+</div>
+
+<script>
+/* ===== Настройки: меняйте только этот блок ===== */
+const CONFIG = {
+  CLUB_NAME: "Grahmir's Dungeon",
+  TELEGRAM_USERNAME: 'Winesmoker_M', // ник администратора в Telegram без @
+  API_URL: '',                       // ссылка на веб-приложение Apps Script; пусто — показывается пример
+  DAYS_AHEAD: 7,                     // сколько дней показывать, начиная с сегодня
+};
+/* =============================================== */
+
+const WEEKDAY = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
+const WEEKDAY_ON = ['в понедельник', 'во вторник', 'в среду', 'в четверг', 'в пятницу', 'в субботу', 'в воскресенье'];
+const MONTH_OF = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+
+const state = { rooms: [], room: 'all', onlyFree: true, updated: null, demo: false };
+const $ = id => document.getElementById(id);
+
+function demoData() {
+  // Пример: два стола, у части слотов постоянные брони компаний.
+  const times = [['12:00', '16:00'], ['18:00', '22:00']];
+  const busy = {
+    'Большой стол': ['0-1', '1-1', '2-1', '4-1', '5-0'],
+    'Малый стол': ['0-1', '3-1', '5-1', '6-0', '6-1'],
+  };
+  return {
+    updated: new Date().toISOString(),
+    rooms: Object.entries(busy).map(([name, taken]) => ({
+      name,
+      slots: [0, 1, 2, 3, 4, 5, 6].flatMap(day => times.map(([start, end], t) => ({
+        day, start, end, free: !taken.includes(`${day}-${t}`),
+      }))),
+    })),
+  };
+}
+
+async function load() {
+  if (!CONFIG.API_URL) { state.demo = true; return demoData(); }
+  const res = await fetch(CONFIG.API_URL, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+const mondayIndex = date => (date.getDay() + 6) % 7;
+const minutes = hhmm => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
+const hoursLabel = (start, end) => {
+  let diff = minutes(end) - minutes(start);
+  if (diff <= 0) diff += 24 * 60;
+  const h = diff / 60;
+  const n = Math.floor(h);
+  const word = (n % 10 === 1 && n % 100 !== 11) ? 'час' : ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) ? 'часа' : 'часов';
+  return Number.isInteger(h) ? `${h} ${word}` : `${h.toString().replace('.', ',')} ч`;
+};
+
+function buildDays() {
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const days = [];
+  for (let i = 0; i < CONFIG.DAYS_AHEAD; i++) {
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    const wd = mondayIndex(date);
+    const slots = [];
+    state.rooms.forEach(room => {
+      if (state.room !== 'all' && state.room !== room.name) return;
+      room.slots.filter(s => s.day === wd).forEach(s => {
+        const past = i === 0 && minutes(s.start) <= nowMin;
+        slots.push({ ...s, room: room.name, date, status: past ? 'past' : s.free ? 'free' : 'busy' });
+      });
+    });
+    slots.sort((a, b) => minutes(a.start) - minutes(b.start) || a.room.localeCompare(b.room, 'ru'));
+    days.push({ date, wd, offset: i, slots });
+  }
+  return days;
+}
+
+function messageFor(slot) {
+  const d = slot.date;
+  return `Привет! Хочу записаться на слот ${WEEKDAY_ON[mondayIndex(d)]}, ${d.getDate()} ${MONTH_OF[d.getMonth()]}, ` +
+    `с ${slot.start} до ${slot.end} (${slot.room}).`;
+}
+
+function render() {
+  const days = buildDays();
+  const freeTotal = days.reduce((n, d) => n + d.slots.filter(s => s.status === 'free').length, 0);
+  $('summary').innerHTML = freeTotal
+    ? `За ближайшие ${CONFIG.DAYS_AHEAD} дней свободно: <b>${freeTotal} ${plural(freeTotal, 'слот', 'слота', 'слотов')}</b>`
+    : 'На ближайшие дни свободных слотов нет. Напишите администратору: возможно, что-то освободится.';
+
+  const board = $('board');
+  board.textContent = '';
+  days.forEach(day => {
+    const shown = state.onlyFree ? day.slots.filter(s => s.status === 'free') : day.slots;
+    const row = document.createElement('section');
+    row.className = 'day';
+    const tag = day.offset === 0 ? 'Сегодня' : day.offset === 1 ? 'Завтра' : '';
+    row.innerHTML = `
+      <div class="day-head">
+        <div class="day-name">${WEEKDAY[day.wd]}</div>
+        <div class="day-date">${day.date.getDate()} ${MONTH_OF[day.date.getMonth()]}</div>
+        ${tag ? `<div class="day-tag">${tag}</div>` : ''}
+      </div>`;
+    const list = document.createElement('div');
+    list.className = 'slots';
+    if (!shown.length) {
+      list.innerHTML = `<div class="empty-day">${day.slots.length ? 'Всё занято' : 'Клуб не работает'}</div>`;
+    }
+    shown.forEach(slot => {
+      const el = document.createElement(slot.status === 'free' ? 'button' : 'div');
+      el.className = `slot ${slot.status}`;
+      const note = slot.status === 'free' ? `Свободно · ${hoursLabel(slot.start, slot.end)}`
+        : slot.status === 'past' ? 'Уже началось' : 'Занято';
+      el.innerHTML = `<span class="slot-time">${slot.start}–${slot.end}</span>
+        <span class="slot-room"></span><span class="slot-note">${note}</span>`;
+      el.querySelector('.slot-room').textContent = slot.room;
+      if (slot.status === 'free') {
+        el.type = 'button';
+        el.setAttribute('aria-label', `Записаться: ${WEEKDAY[day.wd]}, ${slot.start}–${slot.end}, ${slot.room}`);
+        el.addEventListener('click', () => openSheet(slot, el));
+      }
+      list.appendChild(el);
+    });
+    row.appendChild(list);
+    board.appendChild(row);
+  });
+
+  if (state.updated) {
+    const u = new Date(state.updated);
+    $('footer').textContent = `Расписание обновлено ${u.toLocaleDateString('ru-RU')} в ${u.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}. Вопросы — в Telegram @${CONFIG.TELEGRAM_USERNAME}.`;
+  }
+}
+
+function plural(n, one, few, many) {
+  const a = n % 10, b = n % 100;
+  if (a === 1 && b !== 11) return one;
+  if (a >= 2 && a <= 4 && (b < 12 || b > 14)) return few;
+  return many;
+}
+
+function renderRooms() {
+  const box = $('rooms');
+  box.textContent = '';
+  if (state.rooms.length < 2) return;
+  [{ name: 'all', label: 'Все столы' }, ...state.rooms.map(r => ({ name: r.name, label: r.name }))].forEach(r => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.textContent = r.label;
+    b.setAttribute('aria-pressed', String(state.room === r.name));
+    b.addEventListener('click', () => { state.room = r.name; renderRooms(); render(); });
+    box.appendChild(b);
+  });
+}
+
+let lastFocus = null;
+function openSheet(slot, trigger) {
+  lastFocus = trigger;
+  const text = messageFor(slot);
+  $('message').textContent = text;
+  $('tg-link').href = `https://t.me/${encodeURIComponent(CONFIG.TELEGRAM_USERNAME)}?text=${encodeURIComponent(text)}`;
+  $('hint').textContent = `Если текст не подставился в Telegram сам, скопируйте его и отправьте @${CONFIG.TELEGRAM_USERNAME}.`;
+  $('copy').textContent = 'Скопировать текст';
+  $('scrim').hidden = false;
+  $('sheet').hidden = false;
+  $('tg-link').focus();
+}
+function closeSheet() {
+  $('scrim').hidden = true;
+  $('sheet').hidden = true;
+  if (lastFocus) lastFocus.focus();
+}
+
+$('close').addEventListener('click', closeSheet);
+$('scrim').addEventListener('click', closeSheet);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('sheet').hidden) closeSheet(); });
+$('copy').addEventListener('click', () => {
+  const text = $('message').textContent;
+  const done = () => { $('copy').textContent = 'Скопировано'; };
+  const fallback = () => {
+    const range = document.createRange();
+    range.selectNodeContents($('message'));
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    $('copy').textContent = 'Текст выделен, скопируйте его';
+  };
+  try {
+    navigator.clipboard.writeText(text).then(done, fallback);
+  } catch (e) { fallback(); }
+});
+$('only-free').addEventListener('change', e => { state.onlyFree = e.target.checked; render(); });
+
+$('club-name').textContent = CONFIG.CLUB_NAME;
+load()
+  .then(data => {
+    state.rooms = data.rooms || [];
+    state.updated = data.updated;
+    $('demo-note').hidden = !state.demo;
+    renderRooms();
+    render();
+  })
+  .catch(() => {
+    $('summary').textContent = '';
+    const err = $('error');
+    err.hidden = false;
+    err.innerHTML = `<strong>Не получилось загрузить расписание.</strong> Обновите страницу через минуту или напишите администратору в Telegram: @${CONFIG.TELEGRAM_USERNAME}.`;
+  });
+</script>
+</body>
+</html>
