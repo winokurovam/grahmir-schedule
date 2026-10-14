@@ -280,6 +280,7 @@ h1 {
     <p class="message" id="message"></p>
     <div class="actions">
       <a class="btn primary" id="tg-link" href="#" target="_blank" rel="noopener">Написать в Telegram</a>
+      <a class="btn" id="post-link" href="#" target="_blank" rel="noopener" hidden>Пост о наборе</a>
       <button class="btn" id="copy" type="button">Скопировать текст</button>
       <button class="btn" id="close" type="button">Отмена</button>
     </div>
@@ -433,7 +434,7 @@ function render() {
       el.className = `slot ${slot.view}`;
       el.style.setProperty('--gem', gemColor(slot.room));
       const note = slot.view === 'free' ? `Свободно · ${hoursLabel(slot.start, slot.end)}`
-        : slot.view === 'recruit' ? 'Идёт набор · присоединиться'
+        : slot.view === 'recruit' ? (slot.post ? 'Идёт набор · есть пост' : 'Идёт набор · присоединиться')
         : slot.view === 'past' ? 'Уже началось' : 'Занято';
       el.innerHTML = `<span class="slot-time">${slot.start}–${slot.end}</span>
         <span class="slot-room"></span>${slot.view === 'recruit' ? '<span class="slot-title"></span>' : ''}
@@ -485,6 +486,8 @@ function openSheet(slot, trigger) {
   const text = messageFor(slot);
   $('sheet-title').textContent = slot.status === 'recruit' ? 'Присоединиться к игре' : 'Записаться на слот';
   $('message').textContent = text;
+  $('post-link').hidden = !slot.post;
+  if (slot.post) $('post-link').href = slot.post;
   $('tg-link').href = `https://t.me/${encodeURIComponent(CONFIG.TELEGRAM_USERNAME)}?text=${encodeURIComponent(text)}`;
   $('hint').textContent = `Если текст не подставился в Telegram сам, скопируйте его и отправьте @${CONFIG.TELEGRAM_USERNAME}.`;
   $('copy').textContent = 'Скопировать текст';

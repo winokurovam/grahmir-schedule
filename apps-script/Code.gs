@@ -17,6 +17,9 @@
  * комнат в тот же день и то же время суток, а если там пусто — из часов работы
  * клуба: WEEKDAY_TIME для будней, WEEKEND_TIME для субботы и воскресенья.
  *
+ * Пост о наборе: ссылку на пост в Telegram (t.me/…) вставьте в примечание к розовой
+ * ячейке или сделайте ссылкой сам текст ячейки. На сайте появится кнопка «Пост о наборе».
+ *
  * Наружу уходит только «свободно / набор / занято». Названия кампаний и аренды
  * сайт не получает, кроме названий игр, на которые идёт набор.
  */
@@ -38,13 +41,22 @@ function doGet() {
   const book = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = book.getSheetByName(SHEET_NAME) || book.getSheets()[0];
   const range = sheet.getDataRange();
-  const body = parseSchedule(range.getDisplayValues(), range.getBackgrounds(), new Date());
+  const extras = range.getNotes().map((row, r) => row.map((note, c) => `${note} ${linkUrls(range, r, c)}`));
+  const body = parseSchedule(range.getDisplayValues(), range.getBackgrounds(), new Date(), extras);
   return ContentService
     .createTextOutput(JSON.stringify(body))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function parseSchedule(values, backgrounds, now) {
+// Ссылки, проставленные на тексте ячейки (Ctrl+K)
+let richText = null;
+function linkUrls(range, r, c) {
+  if (!richText) richText = range.getRichTextValues();
+  const rt = richText[r][c];
+  return rt ? rt.getRuns().map(run => run.getLinkUrl()).filter(Boolean).join(' ') : '';
+}
+
+function parseSchedule(values, backgrounds, now, extras) {
   const cells = [];
   const rooms = [];
   let dayCols = null;   // столбец → день недели
@@ -96,6 +108,7 @@ function parseSchedule(values, backgrounds, now) {
         text: row[c],
         kind: colorKind(backgrounds[r][c]),
         time: parseTime(row[c]),
+        post: telegramLink(extras ? extras[r][c] : ''),
       });
     });
   });
@@ -111,7 +124,10 @@ function parseSchedule(values, backgrounds, now) {
     const hours = cell.weekday >= 5 ? WEEKEND_TIME : WEEKDAY_TIME;
     const time = cell.time || timeFromNeighbours(cells, cell) || hours[cell.period];
     const slot = { date: cell.date, start: time[0], end: time[1], room: cell.room, status };
-    if (status === 'recruit') slot.title = gameTitle(cell.text);
+    if (status === 'recruit') {
+      slot.title = gameTitle(cell.text);
+      if (cell.post) slot.post = cell.post;
+    }
     slots.push(slot);
   });
 
@@ -130,6 +146,14 @@ function parseTime(text) {
   if (!m) return null;
   const pad = (h, min) => `${String(h).padStart(2, '0')}:${min || '00'}`;
   return [pad(m[1], m[2]), pad(m[3], m[4])];
+}
+
+// Первая ссылка на Telegram в тексте: «t.me/grahmir/123» → 'https://t.me/grahmir/123'.
+// Остальной текст примечаний на сайт не уходит.
+function telegramLink(text) {
+  const m = String(text || '').match(/(?:https?:\/\/)?(?:t\.me|telegram\.me)\/[\w\/+-]+/i);
+  if (!m) return null;
+  return m[0].replace(/^(?:https?:\/\/)?/i, 'https://');
 }
 
 // Название игры без времени: «13:00 - 17:00 Campaign Beksultan» → «Campaign Beksultan»
