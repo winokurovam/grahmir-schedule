@@ -619,8 +619,8 @@ function setMessage(slot, gm) {
   $('tg-link').href = `https://t.me/${encodeURIComponent(CONFIG.TELEGRAM_USERNAME)}?text=${encodeURIComponent(text)}`;
   $('copy').textContent = 'Скопировать текст';
   document.querySelectorAll('#gm-choice .chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gm === gm)));
-  // Минимум игроков важен, когда играют с мастером клуба
-  const needParty = slot.status === 'free' && gm === 'club';
+  // Минимум игроков одинаковый для игры с мастером клуба и со своим мастером
+  const needParty = slot.status === 'free';
   $('party').hidden = !needParty;
   if (needParty) $('party').innerHTML = `<strong>Обратите внимание:</strong> чтобы игра состоялась, нужно собрать ${CONFIG.PARTY_SIZE} игроков.`;
 }
