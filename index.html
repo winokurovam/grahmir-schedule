@@ -28,6 +28,13 @@
   --teal-deep: #0F2C31;
   --teal-bg: rgba(116, 204, 216, .12);
   --teal-line: rgba(116, 204, 216, .55);
+  --pink: #F28BC6;
+  --pink-bg: rgba(242, 139, 198, .12);
+  --pink-line: rgba(242, 139, 198, .55);
+  --gem-amethyst: #B98AF0;
+  --gem-topaz: #E8B947;
+  --gem-emerald: #56C784;
+  --gem-other: #BFA792;
   --ember: #E8552F;
   --busy-a: #2A170C;
   --busy-b: #311C0F;
@@ -81,6 +88,7 @@ h1 {
 .lead { margin: 0; max-width: 58ch; color: var(--muted); font-size: 16px; }
 .summary { margin: 0; font-weight: 500; }
 .summary b { color: var(--teal); font-weight: 600; }
+.summary b.pink { color: var(--pink); }
 
 /* Controls */
 .controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; }
@@ -100,6 +108,7 @@ h1 {
 .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--muted); font-size: 13px; }
 .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; }
 .legend .l-free { background: var(--teal-bg); border: 1px solid var(--teal-line); }
+.legend .l-recruit { background: var(--pink-bg); border: 1px solid var(--pink-line); }
 .legend .l-busy { background: repeating-linear-gradient(135deg, var(--busy-a) 0 4px, var(--busy-b) 4px 8px); border: 1px solid var(--line); }
 
 /* Board */
@@ -129,8 +138,26 @@ h1 {
   min-width: 0;
 }
 .slot-time { font-size: 19px; font-weight: 600; letter-spacing: -.01em; }
-.slot-room { font-size: 14px; overflow-wrap: anywhere; }
+.slot-room { font-size: 14px; overflow-wrap: anywhere; display: flex; align-items: center; gap: 7px; }
+.slot-room::before {
+  content: "";
+  width: 8px; height: 8px; flex: none;
+  transform: rotate(45deg);
+  border-radius: 1px;
+  background: var(--gem, var(--gem-other));
+}
+.slot-title { font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
 .slot-note { font-size: 13px; color: var(--muted); }
+.slot.recruit {
+  background: var(--pink-bg);
+  border-color: var(--pink-line);
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.slot.recruit .slot-note { color: var(--pink); font-weight: 600; }
+.slot.recruit:hover { transform: translateY(-1px); border-color: var(--pink); box-shadow: 0 6px 18px rgba(242, 139, 198, .14); }
+.slot.recruit:focus-visible { outline: 3px solid var(--ember); outline-offset: 2px; }
+.chip .gem { display: inline-block; width: 8px; height: 8px; margin-right: 7px; transform: rotate(45deg); border-radius: 1px; background: var(--gem, var(--gem-other)); vertical-align: 1px; }
 .slot.free {
   background: var(--teal-bg);
   border-color: var(--teal-line);
@@ -208,8 +235,8 @@ h1 {
   .slots { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .slot.free { transition: none; }
-  .slot.free:hover { transform: none; }
+  .slot.free, .slot.recruit { transition: none; }
+  .slot.free:hover, .slot.recruit:hover { transform: none; }
 }
 </style>
 </head>
@@ -219,19 +246,20 @@ h1 {
     <img class="logo" src="assets/emblem.jpg" alt="Красный дракон на кубике d20, эмблема клуба" width="200" height="200">
     <div class="top-text">
       <p class="club">Grahmir's Dungeon</p>
-      <h1>Свободные столы на неделю</h1>
-      <p class="lead">Бирюзовые слоты свободны. Нажмите на любой, и откроется Telegram с готовым сообщением администратору.</p>
+      <h1>Свободные столы и наборы на игры</h1>
+      <p class="lead">Бирюзовые слоты свободны, на розовых идёт набор игроков. Нажмите на слот, и откроется Telegram с готовым сообщением администратору.</p>
       <p class="summary" id="summary">Загружаем расписание…</p>
     </div>
   </header>
 
   <section class="controls" aria-label="Фильтры">
     <div class="chips" id="rooms" role="group" aria-label="Стол"></div>
-    <label class="toggle"><input type="checkbox" id="only-free" checked> Только свободные</label>
+    <label class="toggle"><input type="checkbox" id="only-free" checked> Скрыть занятые</label>
   </section>
 
   <div class="legend" aria-hidden="true">
-    <span><i class="l-free"></i>Свободно, можно записаться</span>
+    <span><i class="l-free"></i>Свободно</span>
+    <span><i class="l-recruit"></i>Идёт набор на игру</span>
     <span><i class="l-busy"></i>Занято</span>
   </div>
 
@@ -265,7 +293,13 @@ const CONFIG = {
   CLUB_NAME: "Grahmir's Dungeon",
   TELEGRAM_USERNAME: 'Winesmoker_M', // ник администратора в Telegram без @
   API_URL: '',                       // ссылка на веб-приложение Apps Script; пусто — показывается пример
-  DAYS_AHEAD: 7,                     // сколько дней показывать, начиная с сегодня
+  MAX_DAYS: 21,                      // не показывать дальше, чем на столько дней вперёд
+};
+// Цвет значка комнаты на сайте. Новая комната без цвета здесь получит нейтральный.
+const ROOM_COLORS = {
+  amethyst: 'var(--gem-amethyst)',
+  topaz: 'var(--gem-topaz)',
+  emerald: 'var(--gem-emerald)',
 };
 /* =============================================== */
 
@@ -273,42 +307,14 @@ const WEEKDAY = ['понедельник', 'вторник', 'среда', 'че
 const WEEKDAY_ON = ['в понедельник', 'во вторник', 'в среду', 'в четверг', 'в пятницу', 'в субботу', 'в воскресенье'];
 const MONTH_OF = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
 
-const state = { rooms: [], room: 'all', onlyFree: true, updated: null, demo: false };
+const state = { rooms: [], slots: [], room: 'all', hideBusy: true, updated: null, demo: false };
 const $ = id => document.getElementById(id);
 
-function demoData() {
-  // Пример: два стола, у части слотов постоянные брони компаний.
-  const times = [['12:00', '16:00'], ['18:00', '22:00']];
-  const busy = {
-    'Большой стол': ['0-1', '1-1', '2-1', '4-1', '5-0'],
-    'Малый стол': ['0-1', '3-1', '5-1', '6-0', '6-1'],
-  };
-  return {
-    updated: new Date().toISOString(),
-    rooms: Object.entries(busy).map(([name, taken]) => ({
-      name,
-      slots: [0, 1, 2, 3, 4, 5, 6].flatMap(day => times.map(([start, end], t) => ({
-        day, start, end, free: !taken.includes(`${day}-${t}`),
-      }))),
-    })),
-  };
-}
-
-async function load() {
-  if (!CONFIG.API_URL) { state.demo = true; return demoData(); }
-  const res = await fetch(CONFIG.API_URL, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const fromYmd = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 const mondayIndex = date => (date.getDay() + 6) % 7;
 const minutes = hhmm => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
-const hoursLabel = (start, end) => {
-  let diff = minutes(end) - minutes(start);
-  if (diff <= 0) diff += 24 * 60;
-  const h = diff / 60;
-  return Number.isInteger(h) ? `${h} ${plural(h, 'час', 'часа', 'часов')}` : `${h.toString().replace('.', ',')} ч`;
-};
+const gemColor = name => ROOM_COLORS[String(name).trim().toLowerCase()] || 'var(--gem-other)';
 
 function plural(n, one, few, many) {
   const a = n % 10, b = n % 100;
@@ -317,44 +323,92 @@ function plural(n, one, few, many) {
   return many;
 }
 
+function hoursLabel(start, end) {
+  let diff = minutes(end) - minutes(start);
+  if (diff <= 0) diff += 24 * 60;
+  const h = diff / 60;
+  return Number.isInteger(h) ? `${h} ${plural(h, 'час', 'часа', 'часов')}` : `${String(h).replace('.', ',')} ч`;
+}
+
+function demoData() {
+  // Пример на две недели вперёд в том же формате, что отдаёт таблица.
+  const rooms = ['Amethyst', 'Topaz', 'Emerald'];
+  const slots = [];
+  const today = new Date();
+  for (let i = 0; i < 14; i++) {
+    const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+    const wd = mondayIndex(date);
+    const times = wd >= 5 ? [['13:00', '17:00'], ['18:00', '22:00']] : [['19:30', '23:30']];
+    rooms.forEach((room, r) => times.forEach(([start, end], t) => {
+      const k = (i * 7 + r * 3 + t * 5) % 11;
+      const status = k === 0 || k === 6 ? 'free' : k === 3 ? 'recruit' : 'busy';
+      const slot = { date: ymd(date), start, end, room, status };
+      if (status === 'recruit') slot.title = 'Новая кампания D&D';
+      slots.push(slot);
+    }));
+  }
+  return { updated: today.toISOString(), rooms: rooms.map(name => ({ name })), slots };
+}
+
+async function load() {
+  if (!CONFIG.API_URL) { state.demo = true; return window.DEMO_DATA || demoData(); }
+  const res = await fetch(CONFIG.API_URL, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 function buildDays() {
   const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const nowMin = now.getHours() * 60 + now.getMinutes();
+  const known = new Set(state.slots.map(s => s.date));
+  const last = state.slots.reduce((max, s) => (s.date > max ? s.date : max), '');
+  let count = last ? Math.round((fromYmd(last) - today) / 864e5) + 1 : 7;
+  count = Math.max(1, Math.min(count, CONFIG.MAX_DAYS));
+
   const days = [];
-  for (let i = 0; i < CONFIG.DAYS_AHEAD; i++) {
-    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
-    const wd = mondayIndex(date);
-    const slots = [];
-    state.rooms.forEach(room => {
-      if (state.room !== 'all' && state.room !== room.name) return;
-      room.slots.filter(s => s.day === wd).forEach(s => {
-        const past = i === 0 && minutes(s.start) <= nowMin;
-        slots.push({ ...s, room: room.name, date, status: past ? 'past' : s.free ? 'free' : 'busy' });
-      });
-    });
-    slots.sort((a, b) => minutes(a.start) - minutes(b.start) || a.room.localeCompare(b.room, 'ru'));
-    days.push({ date, wd, offset: i, slots });
+  for (let i = 0; i < count; i++) {
+    const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+    const key = ymd(date);
+    const slots = state.slots
+      .filter(s => s.date === key && (state.room === 'all' || s.room === state.room))
+      .map(s => {
+        const started = i === 0 && minutes(s.start) <= nowMin;
+        return { ...s, dateObj: date, view: started && s.status !== 'busy' ? 'past' : s.status };
+      })
+      .sort((a, b) => minutes(a.start) - minutes(b.start) || a.room.localeCompare(b.room));
+    days.push({ date, wd: mondayIndex(date), offset: i, known: known.has(key), slots });
   }
   return days;
 }
 
+function whenText(slot) {
+  const d = slot.dateObj;
+  return `${WEEKDAY_ON[mondayIndex(d)]}, ${d.getDate()} ${MONTH_OF[d.getMonth()]}, с ${slot.start} до ${slot.end} (${slot.room})`;
+}
+
 function messageFor(slot) {
-  const d = slot.date;
-  return `Привет! Хочу записаться на слот ${WEEKDAY_ON[mondayIndex(d)]}, ${d.getDate()} ${MONTH_OF[d.getMonth()]}, ` +
-    `с ${slot.start} до ${slot.end} (${slot.room}).`;
+  return slot.status === 'recruit'
+    ? `Привет! Хочу присоединиться к игре «${slot.title}» ${whenText(slot)}.`
+    : `Привет! Хочу записаться на свободный слот ${whenText(slot)}.`;
 }
 
 function render() {
   const days = buildDays();
-  const freeTotal = days.reduce((n, d) => n + d.slots.filter(s => s.status === 'free').length, 0);
-  $('summary').innerHTML = freeTotal
-    ? `За ближайшие ${CONFIG.DAYS_AHEAD} дней свободно: <b>${freeTotal} ${plural(freeTotal, 'слот', 'слота', 'слотов')}</b>`
-    : 'На ближайшие дни свободных слотов нет. Напишите администратору: возможно, что-то освободится.';
+  const all = days.flatMap(d => d.slots);
+  const free = all.filter(s => s.view === 'free').length;
+  const recruit = all.filter(s => s.view === 'recruit').length;
+  const parts = [];
+  if (free) parts.push(`<b>${free} ${plural(free, 'свободный слот', 'свободных слота', 'свободных слотов')}</b>`);
+  if (recruit) parts.push(`<b class="pink">${recruit} ${plural(recruit, 'набор', 'набора', 'наборов')} на игру</b>`);
+  $('summary').innerHTML = parts.length
+    ? `До ${days[days.length - 1].date.getDate()} ${MONTH_OF[days[days.length - 1].date.getMonth()]}: ${parts.join(' и ')}`
+    : 'Свободных слотов пока нет. Напишите администратору: возможно, что-то освободится.';
 
   const board = $('board');
   board.textContent = '';
   days.forEach(day => {
-    const shown = state.onlyFree ? day.slots.filter(s => s.status === 'free') : day.slots;
+    const shown = state.hideBusy ? day.slots.filter(s => s.view === 'free' || s.view === 'recruit') : day.slots;
     const row = document.createElement('section');
     row.className = 'day';
     const tag = day.offset === 0 ? 'Сегодня' : day.offset === 1 ? 'Завтра' : '';
@@ -367,19 +421,28 @@ function render() {
     const list = document.createElement('div');
     list.className = 'slots';
     if (!shown.length) {
-      list.innerHTML = `<div class="empty-day">${day.slots.length ? 'Всё занято' : 'Клуб не работает'}</div>`;
+      const empty = document.createElement('div');
+      empty.className = 'empty-day';
+      empty.textContent = !day.known ? 'Расписания на этот день пока нет'
+        : day.slots.length ? 'Всё занято' : 'Клуб не работает';
+      list.appendChild(empty);
     }
     shown.forEach(slot => {
-      const el = document.createElement(slot.status === 'free' ? 'button' : 'div');
-      el.className = `slot ${slot.status}`;
-      const note = slot.status === 'free' ? `Свободно · ${hoursLabel(slot.start, slot.end)}`
-        : slot.status === 'past' ? 'Уже началось' : 'Занято';
+      const open = slot.view === 'free' || slot.view === 'recruit';
+      const el = document.createElement(open ? 'button' : 'div');
+      el.className = `slot ${slot.view}`;
+      el.style.setProperty('--gem', gemColor(slot.room));
+      const note = slot.view === 'free' ? `Свободно · ${hoursLabel(slot.start, slot.end)}`
+        : slot.view === 'recruit' ? 'Идёт набор · присоединиться'
+        : slot.view === 'past' ? 'Уже началось' : 'Занято';
       el.innerHTML = `<span class="slot-time">${slot.start}–${slot.end}</span>
-        <span class="slot-room"></span><span class="slot-note">${note}</span>`;
+        <span class="slot-room"></span>${slot.view === 'recruit' ? '<span class="slot-title"></span>' : ''}
+        <span class="slot-note">${note}</span>`;
       el.querySelector('.slot-room').textContent = slot.room;
-      if (slot.status === 'free') {
+      if (slot.view === 'recruit') el.querySelector('.slot-title').textContent = slot.title;
+      if (open) {
         el.type = 'button';
-        el.setAttribute('aria-label', `Записаться: ${WEEKDAY[day.wd]}, ${slot.start}–${slot.end}, ${slot.room}`);
+        el.setAttribute('aria-label', `${slot.view === 'recruit' ? 'Присоединиться к игре ' + slot.title : 'Записаться'}: ${WEEKDAY[day.wd]}, ${slot.start}–${slot.end}, ${slot.room}`);
         el.addEventListener('click', () => openSheet(slot, el));
       }
       list.appendChild(el);
@@ -399,11 +462,17 @@ function renderRooms() {
   const box = $('rooms');
   box.textContent = '';
   if (state.rooms.length < 2) return;
-  [{ name: 'all', label: 'Все столы' }, ...state.rooms.map(r => ({ name: r.name, label: r.name }))].forEach(r => {
+  [{ name: 'all', label: 'Все комнаты' }, ...state.rooms.map(r => ({ name: r.name, label: r.name }))].forEach(r => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'chip';
-    b.textContent = r.label;
+    if (r.name !== 'all') {
+      const gem = document.createElement('span');
+      gem.className = 'gem';
+      gem.style.setProperty('--gem', gemColor(r.name));
+      b.appendChild(gem);
+    }
+    b.appendChild(document.createTextNode(r.label));
     b.setAttribute('aria-pressed', String(state.room === r.name));
     b.addEventListener('click', () => { state.room = r.name; renderRooms(); render(); });
     box.appendChild(b);
@@ -414,6 +483,7 @@ let lastFocus = null;
 function openSheet(slot, trigger) {
   lastFocus = trigger;
   const text = messageFor(slot);
+  $('sheet-title').textContent = slot.status === 'recruit' ? 'Присоединиться к игре' : 'Записаться на слот';
   $('message').textContent = text;
   $('tg-link').href = `https://t.me/${encodeURIComponent(CONFIG.TELEGRAM_USERNAME)}?text=${encodeURIComponent(text)}`;
   $('hint').textContent = `Если текст не подставился в Telegram сам, скопируйте его и отправьте @${CONFIG.TELEGRAM_USERNAME}.`;
@@ -446,13 +516,15 @@ $('copy').addEventListener('click', () => {
     navigator.clipboard.writeText(text).then(done, fallback);
   } catch (e) { fallback(); }
 });
-$('only-free').addEventListener('change', e => { state.onlyFree = e.target.checked; render(); });
+$('only-free').addEventListener('change', e => { state.hideBusy = e.target.checked; render(); });
 
 load()
   .then(data => {
     state.rooms = data.rooms || [];
+    state.slots = data.slots || [];
     state.updated = data.updated;
     $('demo-note').hidden = !state.demo;
+    if (state.demo && window.DEMO_NOTE) $('demo-note').innerHTML = window.DEMO_NOTE;
     renderRooms();
     render();
   })
