@@ -202,6 +202,17 @@ h1 {
   font-size: 14px;
 }
 .notice strong { color: var(--ink); }
+.soon {
+  display: grid;
+  gap: 4px;
+  margin-top: 18px;
+  padding: 18px 20px;
+  border-radius: var(--radius);
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 14px;
+}
+.soon strong { font: 700 18px/1.3 var(--font-display); color: var(--ink); }
 .footer { color: var(--muted); font-size: 13px; }
 
 /* Booking sheet */
@@ -409,8 +420,9 @@ function buildDays() {
   const dates = state.dates.length ? state.dates : state.slots.map(s => s.date);
   const known = new Set(dates);
   const last = dates.reduce((max, d) => (d > max ? d : max), '');
-  let count = last ? Math.round((fromYmd(last) - today) / 864e5) + 1 : 7;
-  count = Math.max(1, Math.min(count, CONFIG.MAX_DAYS));
+  // Дни от сегодня до последней даты в таблице; если все даты в прошлом — ни одного
+  let count = last ? Math.round((fromYmd(last) - today) / 864e5) + 1 : 0;
+  count = Math.max(0, Math.min(count, CONFIG.MAX_DAYS));
 
   const days = [];
   for (let i = 0; i < count; i++) {
@@ -447,8 +459,9 @@ function render() {
   const parts = [];
   if (free) parts.push(`<b>${free} ${plural(free, 'свободный слот', 'свободных слота', 'свободных слотов')}</b>`);
   if (recruit) parts.push(`<b class="pink">${recruit} ${plural(recruit, 'набор', 'набора', 'наборов')} на игру</b>`);
-  $('summary').innerHTML = parts.length
-    ? `До ${days[days.length - 1].date.getDate()} ${MONTH_OF[days[days.length - 1].date.getMonth()]}: ${parts.join(' и ')}`
+  const lastDay = days.length ? days[days.length - 1].date : null;
+  $('summary').innerHTML = !lastDay ? 'Мы ещё не обновили расписание, потерпите чуть-чуть.'
+    : parts.length ? `До ${lastDay.getDate()} ${MONTH_OF[lastDay.getMonth()]}: ${parts.join(' и ')}`
     : 'Свободных слотов пока нет. Напишите администратору: возможно, что-то освободится.';
 
   const board = $('board');
@@ -471,7 +484,7 @@ function render() {
     if (!shown.length) {
       const empty = document.createElement('div');
       empty.className = 'empty-day';
-      empty.textContent = !day.known ? 'Расписания на этот день пока нет'
+      empty.textContent = !day.known ? 'Мы ещё не обновили расписание, потерпите чуть-чуть.'
         : 'Свободных мест нет';
       list.appendChild(empty);
     }
@@ -518,6 +531,16 @@ function render() {
     row.appendChild(body);
     board.appendChild(row);
   });
+
+  // Заглушка после последнего дня, выложенного в таблице
+  const soon = document.createElement('div');
+  soon.className = 'soon';
+  soon.innerHTML = '<strong>Мы ещё не обновили расписание, потерпите чуть-чуть.</strong>';
+  if (lastDay) {
+    const next = new Date(lastDay.getFullYear(), lastDay.getMonth(), lastDay.getDate() + 1);
+    soon.insertAdjacentHTML('beforeend', `<span>Расписание с ${next.getDate()} ${MONTH_OF[next.getMonth()]} появится здесь, как только мы его составим.</span>`);
+  }
+  board.appendChild(soon);
 
   if (state.updated) {
     const u = new Date(state.updated);
