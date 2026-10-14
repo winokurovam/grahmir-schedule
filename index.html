@@ -5,41 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Grahmir's Dungeon — свободные столы</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="Расписание свободных слотов для игр в клубе. Нажмите на свободный слот, чтобы записаться через Telegram.">
+<meta name="description" content="Свободные слоты для игр в Grahmir's Dungeon. Нажмите на свободный слот, чтобы записаться через Telegram.">
+<meta name="theme-color" content="#21110A">
+<meta property="og:title" content="Grahmir's Dungeon — свободные столы">
+<meta property="og:description" content="Свободные слоты на неделю. Запись в один клик через Telegram.">
+<meta property="og:image" content="assets/logo.jpg">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Philosopher:wght@400;700&family=Golos+Text:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Philosopher:wght@400;700&family=Golos+Text:wght@400;500;600&display=swap">
 <style>
-/* Layout: one column "board" — a row per day, slot tokens wrapping inside it; booking happens in a bottom sheet. */
+/* Layout: logo + heading over an ember glow, then a one-column "board" — a row per day with slot tokens; booking in a bottom sheet.
+   Single dark theme on purpose: it follows the club logo (dungeon brown, d20 teal, dragon red). */
 :root {
-  --bg: #EEEDF2;
-  --surface: #FFFFFF;
-  --ink: #1C1A26;
-  --muted: #676379;
-  --line: #D8D5E1;
-  --gold: #8E6210;
-  --free: #136B4A;
-  --free-bg: #E1F2E9;
-  --free-line: #9CD3B8;
-  --busy-a: #E4E2EA;
-  --busy-b: #DAD7E2;
-  --shadow: 0 10px 40px rgba(28, 26, 38, .18);
+  --bg: #21110A;
+  --surface: #331D10;
+  --ink: #F5ECE2;
+  --muted: #BFA792;
+  --line: #4B311F;
+  --teal: #74CCD8;
+  --teal-deep: #0F2C31;
+  --teal-bg: rgba(116, 204, 216, .12);
+  --teal-line: rgba(116, 204, 216, .55);
+  --ember: #E8552F;
+  --busy-a: #2A170C;
+  --busy-b: #311C0F;
+  --glow: rgba(232, 85, 47, .16);
+  --shadow: 0 -10px 40px rgba(0, 0, 0, .55);
+  --font-brand: "Uncial Antiqua", "Philosopher", "Georgia", serif;
   --font-display: "Philosopher", "Georgia", serif;
   --font-body: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --radius: 10px;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #13121A; --surface: #1D1B27; --ink: #ECEAF4; --muted: #9D99AE; --line: #322F3F;
-    --gold: #DDB15C; --free: #5AD6A0; --free-bg: #15332A; --free-line: #2E6B53;
-    --busy-a: #22202C; --busy-b: #282634; --shadow: 0 10px 40px rgba(0, 0, 0, .5);
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #13121A; --surface: #1D1B27; --ink: #ECEAF4; --muted: #9D99AE; --line: #322F3F;
-  --gold: #DDB15C; --free: #5AD6A0; --free-bg: #15332A; --free-line: #2E6B53;
-  --busy-a: #22202C; --busy-b: #282634; --shadow: 0 10px 40px rgba(0, 0, 0, .5);
   color-scheme: dark;
 }
 
@@ -47,7 +44,7 @@
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
-  background: var(--bg);
+  background: radial-gradient(ellipse 900px 520px at 50% -80px, var(--glow), transparent 70%) no-repeat, var(--bg);
   color: var(--ink);
   font: 400 15px/1.5 var(--font-body);
   font-variant-numeric: tabular-nums;
@@ -57,7 +54,7 @@ body {
 .wrap {
   max-width: 980px;
   margin: 0 auto;
-  padding-block: 32px 64px;
+  padding-block: 28px 64px;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   display: grid;
@@ -65,18 +62,25 @@ body {
 }
 
 /* Header */
-.top { display: grid; gap: 14px; }
-.brand { display: flex; align-items: center; gap: 12px; color: var(--gold); }
-.brand svg { width: 34px; height: 34px; flex: none; }
-.brand span { font: 700 13px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; }
+.top { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 8px 28px; align-items: center; }
+.logo {
+  width: 200px;
+  max-width: 100%;
+  aspect-ratio: 1;
+  display: block;
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 68%, transparent 78%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 68%, transparent 78%);
+}
+.top-text { display: grid; gap: 12px; min-width: 0; }
+.club { margin: 0; font: 400 clamp(18px, 3vw, 22px)/1.1 var(--font-brand); letter-spacing: .06em; text-transform: uppercase; color: var(--ink); }
 h1 {
   margin: 0;
-  font: 700 clamp(30px, 6vw, 46px)/1.08 var(--font-display);
+  font: 700 clamp(30px, 5.6vw, 46px)/1.08 var(--font-display);
   text-wrap: balance;
 }
-.lead { margin: 0; max-width: 60ch; color: var(--muted); font-size: 16px; }
+.lead { margin: 0; max-width: 58ch; color: var(--muted); font-size: 16px; }
 .summary { margin: 0; font-weight: 500; }
-.summary b { color: var(--free); font-weight: 600; }
+.summary b { color: var(--teal); font-weight: 600; }
 
 /* Controls */
 .controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; }
@@ -92,14 +96,14 @@ h1 {
 }
 .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .toggle { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; cursor: pointer; }
-.toggle input { width: 18px; height: 18px; accent-color: var(--free); margin: 0; }
+.toggle input { width: 18px; height: 18px; accent-color: var(--teal); margin: 0; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--muted); font-size: 13px; }
 .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; }
-.legend .l-free { background: var(--free-bg); border: 1px solid var(--free-line); }
-.legend .l-busy { background: repeating-linear-gradient(135deg, var(--busy-a) 0 4px, var(--busy-b) 4px 8px); }
+.legend .l-free { background: var(--teal-bg); border: 1px solid var(--teal-line); }
+.legend .l-busy { background: repeating-linear-gradient(135deg, var(--busy-a) 0 4px, var(--busy-b) 4px 8px); border: 1px solid var(--line); }
 
 /* Board */
-.board { display: grid; gap: 0; border-top: 1px solid var(--line); }
+.board { display: grid; border-top: 1px solid var(--line); }
 .day {
   display: grid;
   grid-template-columns: 170px minmax(0, 1fr);
@@ -109,7 +113,7 @@ h1 {
 }
 .day-name { font: 700 20px/1.2 var(--font-display); text-transform: capitalize; }
 .day-date { color: var(--muted); font-size: 14px; }
-.day-tag { display: inline-block; margin-top: 6px; color: var(--gold); font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.day-tag { display: inline-block; margin-top: 6px; color: var(--ember); font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
 .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
 .empty-day { color: var(--muted); align-self: center; }
 
@@ -119,7 +123,7 @@ h1 {
   text-align: left;
   padding: 12px 14px;
   border-radius: var(--radius);
-  border: 1px solid transparent;
+  border: 1px solid var(--line);
   font: inherit;
   color: inherit;
   min-width: 0;
@@ -128,14 +132,14 @@ h1 {
 .slot-room { font-size: 14px; overflow-wrap: anywhere; }
 .slot-note { font-size: 13px; color: var(--muted); }
 .slot.free {
-  background: var(--free-bg);
-  border-color: var(--free-line);
+  background: var(--teal-bg);
+  border-color: var(--teal-line);
   cursor: pointer;
-  transition: transform .12s ease, box-shadow .12s ease;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
 }
-.slot.free .slot-note { color: var(--free); font-weight: 600; }
-.slot.free:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(19, 107, 74, .18); }
-.slot.free:focus-visible, .chip:focus-visible, .btn:focus-visible, .toggle input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.slot.free .slot-note { color: var(--teal); font-weight: 600; }
+.slot.free:hover { transform: translateY(-1px); border-color: var(--teal); box-shadow: 0 6px 18px rgba(116, 204, 216, .14); }
+.slot.free:focus-visible, .chip:focus-visible, .btn:focus-visible, .toggle input:focus-visible { outline: 3px solid var(--ember); outline-offset: 2px; }
 .slot.busy, .slot.past {
   background: repeating-linear-gradient(135deg, var(--busy-a) 0 6px, var(--busy-b) 6px 12px);
   color: var(--muted);
@@ -151,15 +155,15 @@ h1 {
 }
 .notice strong { color: var(--ink); }
 .footer { color: var(--muted); font-size: 13px; }
-.footer a { color: inherit; }
 
 /* Booking sheet */
-.scrim { position: fixed; inset: 0; background: rgba(10, 9, 16, .45); z-index: 10; }
+.scrim { position: fixed; inset: 0; background: rgba(8, 4, 2, .6); z-index: 10; }
 .sheet {
   position: fixed;
   left: 0; right: 0; bottom: 0;
   z-index: 11;
   background: var(--surface);
+  border-top: 1px solid var(--line);
   border-radius: 18px 18px 0 0;
   box-shadow: var(--shadow);
   padding-top: 22px;
@@ -187,14 +191,17 @@ h1 {
   text-decoration: none;
   cursor: pointer;
   border: 1px solid var(--line);
-  background: var(--surface);
+  background: transparent;
   color: var(--ink);
 }
-.btn.primary { background: var(--free); border-color: var(--free); color: var(--surface); flex: 1 1 200px; }
+.btn.primary { background: var(--teal); border-color: var(--teal); color: var(--teal-deep); flex: 1 1 200px; }
 .hint { margin: 0; color: var(--muted); font-size: 13px; }
 
 @media (max-width: 640px) {
-  .wrap { padding-block: 22px 48px; gap: 22px; }
+  .wrap { padding-block: 16px 48px; gap: 22px; }
+  .top { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; }
+  .logo { width: 170px; }
+  .lead { margin-inline: auto; }
   .day { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .day-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .day-tag { margin-top: 0; }
@@ -209,16 +216,13 @@ h1 {
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand">
-      <svg viewBox="0 0 64 64" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round">
-        <path d="M32 4 56 18v28L32 60 8 46V18Z"/>
-        <path d="M32 4 18 26h28Z M18 26 8 46 M46 26l10 20 M18 26l14 22 14-22 M32 48v12 M8 18l10 8 M56 18l-10 8 M8 46l24 2 24-2"/>
-      </svg>
-      <span id="club-name">Grahmir's Dungeon</span>
+    <img class="logo" src="assets/emblem.jpg" alt="Красный дракон на кубике d20, эмблема клуба" width="200" height="200">
+    <div class="top-text">
+      <p class="club">Grahmir's Dungeon</p>
+      <h1>Свободные столы на неделю</h1>
+      <p class="lead">Бирюзовые слоты свободны. Нажмите на любой, и откроется Telegram с готовым сообщением администратору.</p>
+      <p class="summary" id="summary">Загружаем расписание…</p>
     </div>
-    <h1>Свободные столы на неделю</h1>
-    <p class="lead">Зелёные слоты свободны. Нажмите на любой, и откроется Telegram с готовым сообщением администратору.</p>
-    <p class="summary" id="summary">Загружаем расписание…</p>
   </header>
 
   <section class="controls" aria-label="Фильтры">
@@ -232,7 +236,7 @@ h1 {
   </div>
 
   <div id="demo-note" class="notice" hidden>
-    <strong>Это пример расписания.</strong> Когда в настройках появится ссылка на вашу таблицу, здесь будут настоящие слоты.
+    <strong>Это пример расписания.</strong> Когда в настройках появится ссылка на таблицу клуба, здесь будут настоящие слоты.
   </div>
   <div id="error" class="notice" hidden></div>
 
@@ -303,10 +307,15 @@ const hoursLabel = (start, end) => {
   let diff = minutes(end) - minutes(start);
   if (diff <= 0) diff += 24 * 60;
   const h = diff / 60;
-  const n = Math.floor(h);
-  const word = (n % 10 === 1 && n % 100 !== 11) ? 'час' : ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) ? 'часа' : 'часов';
-  return Number.isInteger(h) ? `${h} ${word}` : `${h.toString().replace('.', ',')} ч`;
+  return Number.isInteger(h) ? `${h} ${plural(h, 'час', 'часа', 'часов')}` : `${h.toString().replace('.', ',')} ч`;
 };
+
+function plural(n, one, few, many) {
+  const a = n % 10, b = n % 100;
+  if (a === 1 && b !== 11) return one;
+  if (a >= 2 && a <= 4 && (b < 12 || b > 14)) return few;
+  return many;
+}
 
 function buildDays() {
   const now = new Date();
@@ -381,15 +390,9 @@ function render() {
 
   if (state.updated) {
     const u = new Date(state.updated);
-    $('footer').textContent = `Расписание обновлено ${u.toLocaleDateString('ru-RU')} в ${u.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}. Вопросы — в Telegram @${CONFIG.TELEGRAM_USERNAME}.`;
+    $('footer').textContent = `${CONFIG.CLUB_NAME}. Расписание обновлено ${u.toLocaleDateString('ru-RU')} в ` +
+      `${u.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}. Вопросы — в Telegram @${CONFIG.TELEGRAM_USERNAME}.`;
   }
-}
-
-function plural(n, one, few, many) {
-  const a = n % 10, b = n % 100;
-  if (a === 1 && b !== 11) return one;
-  if (a >= 2 && a <= 4 && (b < 12 || b > 14)) return few;
-  return many;
 }
 
 function renderRooms() {
@@ -445,7 +448,6 @@ $('copy').addEventListener('click', () => {
 });
 $('only-free').addEventListener('change', e => { state.onlyFree = e.target.checked; render(); });
 
-$('club-name').textContent = CONFIG.CLUB_NAME;
 load()
   .then(data => {
     state.rooms = data.rooms || [];
