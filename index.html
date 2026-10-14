@@ -167,11 +167,12 @@ h1 {
 .slot.free .slot-note { color: var(--teal); font-weight: 600; }
 .slot.free:hover { transform: translateY(-1px); border-color: var(--teal); box-shadow: 0 6px 18px rgba(116, 204, 216, .14); }
 .slot.free:focus-visible, .chip:focus-visible, .btn:focus-visible, .toggle input:focus-visible { outline: 3px solid var(--ember); outline-offset: 2px; }
-.slot.busy, .slot.past {
+.slot.busy, .slot.past, .slot.full {
   background: repeating-linear-gradient(135deg, var(--busy-a) 0 6px, var(--busy-b) 6px 12px);
   color: var(--muted);
 }
 .slot.past { opacity: .6; }
+.slot.full .slot-note { color: var(--gem-emerald); font-weight: 600; }
 
 .notice {
   padding: 14px 16px;
@@ -260,7 +261,7 @@ h1 {
   <div class="legend" aria-hidden="true">
     <span><i class="l-free"></i>Свободно</span>
     <span><i class="l-recruit"></i>Идёт набор на игру</span>
-    <span><i class="l-busy"></i>Занято</span>
+    <span><i class="l-busy"></i>Занято или набор закрыт</span>
   </div>
 
   <div id="demo-note" class="notice" hidden>
@@ -375,7 +376,7 @@ function buildDays() {
       .filter(s => s.date === key && (state.room === 'all' || s.room === state.room))
       .map(s => {
         const started = i === 0 && minutes(s.start) <= nowMin;
-        return { ...s, dateObj: date, view: started && s.status !== 'busy' ? 'past' : s.status };
+        return { ...s, dateObj: date, view: started && (s.status === 'free' || s.status === 'recruit') ? 'past' : s.status };
       })
       .sort((a, b) => minutes(a.start) - minutes(b.start) || a.room.localeCompare(b.room));
     days.push({ date, wd: mondayIndex(date), offset: i, known: known.has(key), slots });
@@ -435,12 +436,13 @@ function render() {
       el.style.setProperty('--gem', gemColor(slot.room));
       const note = slot.view === 'free' ? `Свободно · ${hoursLabel(slot.start, slot.end)}`
         : slot.view === 'recruit' ? (slot.post ? 'Идёт набор · есть пост' : 'Идёт набор · присоединиться')
+        : slot.view === 'full' ? 'Набор закрыт'
         : slot.view === 'past' ? 'Уже началось' : 'Занято';
       el.innerHTML = `<span class="slot-time">${slot.start}–${slot.end}</span>
-        <span class="slot-room"></span>${slot.view === 'recruit' ? '<span class="slot-title"></span>' : ''}
+        <span class="slot-room"></span>${slot.title ? '<span class="slot-title"></span>' : ''}
         <span class="slot-note">${note}</span>`;
       el.querySelector('.slot-room').textContent = slot.room;
-      if (slot.view === 'recruit') el.querySelector('.slot-title').textContent = slot.title;
+      if (slot.title) el.querySelector('.slot-title').textContent = slot.title;
       if (open) {
         el.type = 'button';
         el.setAttribute('aria-label', `${slot.view === 'recruit' ? 'Присоединиться к игре ' + slot.title : 'Записаться'}: ${WEEKDAY[day.wd]}, ${slot.start}–${slot.end}, ${slot.room}`);

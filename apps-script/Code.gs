@@ -10,6 +10,7 @@
  *   красный      — игра отменена, слот свободен;
  *   бирюзовый    — слот свободен;
  *   розовый      — идёт набор на игру, к ней можно присоединиться;
+ *   зелёный      — набор закрыт, команда собрана (на сайте видно название игры);
  *   другой цвет  — слот занят (кампания, аренда);
  *   без заливки и без текста — в это время клуб не работает, на сайте слота нет.
  *
@@ -118,12 +119,14 @@ function parseSchedule(values, backgrounds, now, extras) {
     let status;
     if (cell.kind === 'red' || cell.kind === 'cyan') status = 'free';
     else if (cell.kind === 'pink') status = 'recruit';
+    else if (cell.kind === 'green') status = 'full';
     else if (cell.text) status = 'busy';
     else return;
 
     const hours = cell.weekday >= 5 ? WEEKEND_TIME : WEEKDAY_TIME;
     const time = cell.time || timeFromNeighbours(cells, cell) || hours[cell.period];
     const slot = { date: cell.date, start: time[0], end: time[1], room: cell.room, status };
+    if (status === 'full') slot.title = gameTitle(cell.text);
     if (status === 'recruit') {
       slot.title = gameTitle(cell.text);
       if (cell.post) slot.post = cell.post;
@@ -186,7 +189,7 @@ function parseDate(text, now) {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-// Цвет заливки → 'red' | 'pink' | 'cyan' | 'other' | 'none'
+// Цвет заливки → 'red' | 'pink' | 'cyan' | 'green' | 'other' | 'none'
 function colorKind(hex) {
   const m = String(hex).match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
   if (!m) return 'none';
@@ -201,5 +204,6 @@ function colorKind(hex) {
   if (hue < 12 || hue >= 345) return 'red';
   if (hue >= 280) return 'pink';
   if (hue >= 165 && hue < 200) return 'cyan';
+  if (hue >= 75 && hue < 160) return 'green';
   return 'other';
 }
