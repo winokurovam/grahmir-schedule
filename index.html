@@ -125,6 +125,15 @@ h1 {
 .day-tag { display: inline-block; margin-top: 6px; color: var(--ember); font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
 .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
 .empty-day { color: var(--muted); align-self: center; }
+.day-body { display: grid; gap: 12px; min-width: 0; }
+.games { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; font-size: 13px; color: var(--muted); }
+.games-label { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; opacity: .75; }
+.games li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; min-width: 0; }
+.games .g-time { flex: none; min-width: 92px; }
+.games .g-room { flex: none; display: inline-flex; align-items: center; gap: 6px; min-width: 84px; }
+.games .g-room::before { content: ""; width: 6px; height: 6px; transform: rotate(45deg); border-radius: 1px; background: var(--gem, var(--gem-other)); opacity: .8; }
+.games .g-title { min-width: 0; overflow-wrap: anywhere; }
+.games .g-full { color: var(--gem-emerald); opacity: .85; }
 
 .slot {
   display: grid;
@@ -261,7 +270,7 @@ h1 {
   <div class="legend" aria-hidden="true">
     <span><i class="l-free"></i>Свободно</span>
     <span><i class="l-recruit"></i>Идёт набор на игру</span>
-    <span><i class="l-busy"></i>Занято или набор закрыт</span>
+    <span><i class="l-busy"></i>Занято</span>
   </div>
 
   <div id="demo-note" class="notice" hidden>
@@ -410,7 +419,9 @@ function render() {
   const board = $('board');
   board.textContent = '';
   days.forEach(day => {
-    const shown = state.hideBusy ? day.slots.filter(s => s.view === 'free' || s.view === 'recruit') : day.slots;
+    const cards = day.slots.filter(s => s.view !== 'campaign' && s.view !== 'full');
+    const games = day.slots.filter(s => s.view === 'campaign' || s.view === 'full');
+    const shown = state.hideBusy ? cards.filter(s => s.view === 'free' || s.view === 'recruit') : cards;
     const row = document.createElement('section');
     row.className = 'day';
     const tag = day.offset === 0 ? 'Сегодня' : day.offset === 1 ? 'Завтра' : '';
@@ -426,7 +437,7 @@ function render() {
       const empty = document.createElement('div');
       empty.className = 'empty-day';
       empty.textContent = !day.known ? 'Расписания на этот день пока нет'
-        : day.slots.length ? 'Всё занято' : 'Клуб не работает';
+        : day.slots.length ? 'Свободных мест нет' : 'Клуб не работает';
       list.appendChild(empty);
     }
     shown.forEach(slot => {
@@ -450,7 +461,25 @@ function render() {
       }
       list.appendChild(el);
     });
-    row.appendChild(list);
+    const body = document.createElement('div');
+    body.className = 'day-body';
+    body.appendChild(list);
+    if (games.length) {
+      const ul = document.createElement('ul');
+      ul.className = 'games';
+      ul.innerHTML = '<li class="games-label">Играют в этот день</li>';
+      games.forEach(g => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="g-time">${g.start}–${g.end}</span><span class="g-room"></span><span class="g-title"></span>` +
+          (g.view === 'full' ? '<span class="g-full">набор закрыт</span>' : '');
+        li.querySelector('.g-room').textContent = g.room;
+        li.querySelector('.g-room').style.setProperty('--gem', gemColor(g.room));
+        li.querySelector('.g-title').textContent = g.title;
+        ul.appendChild(li);
+      });
+      body.appendChild(ul);
+    }
+    row.appendChild(body);
     board.appendChild(row);
   });
 
