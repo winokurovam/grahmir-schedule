@@ -138,6 +138,9 @@ h1 {
 .games li { display: contents; }
 .games .g-time { white-space: nowrap; }
 .games .g-room { white-space: nowrap; }
+.games .g-room.all::before { display: none; }
+.games .g-room.all i { display: inline-block; width: 6px; height: 6px; margin-right: 4px; vertical-align: 1px; transform: rotate(45deg); border-radius: 1px; background: var(--gem); opacity: .8; }
+.games .g-room.all i:last-of-type { margin-right: 7px; }
 .games .g-room::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 7px; vertical-align: 1px; transform: rotate(45deg); border-radius: 1px; background: var(--gem, var(--gem-other)); opacity: .8; }
 .games .g-title { min-width: 0; overflow-wrap: anywhere; }
 .sys-logo { display: inline-block; width: auto; height: 1.3em; margin-right: 6px; vertical-align: -.3em; object-fit: contain; }
@@ -203,25 +206,6 @@ h1 {
   font-size: 14px;
 }
 .notice strong { color: var(--ink); }
-.event {
-  display: grid;
-  gap: 4px;
-  justify-items: start;
-  padding: 14px 16px;
-  border-radius: var(--radius);
-  border: 1px solid var(--ember);
-  background: linear-gradient(135deg, rgba(232, 85, 47, .2), rgba(232, 85, 47, .06));
-}
-.event-tag { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--ember); }
-.event-title { font: 700 22px/1.2 var(--font-display); }
-.event-title .sys-logo { height: 1.1em; vertical-align: -.15em; }
-.event-when { color: var(--ink); font-weight: 500; }
-.event-when::first-letter { text-transform: uppercase; }
-.event-masters { color: var(--muted); font-size: 14px; }
-.event-link { margin-top: 8px; flex: none; }
-.event-closed { margin-top: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-size: 13px; font-weight: 600; }
-.event-top { padding: 18px 20px; }
-.event-top .event-title { font-size: 26px; }
 .soon {
   display: grid;
   gap: 4px;
@@ -317,8 +301,6 @@ h1 {
     </div>
   </header>
 
-  <section class="event-banner" id="event-banner" hidden></section>
-
   <section class="controls" aria-label="Фильтры">
     <div class="chips" id="rooms" role="group" aria-label="Стол"></div>
   </section>
@@ -369,16 +351,15 @@ const CONFIG = {
   PARTY_SIZE: 'от 4 до 6',           // сколько игроков нужно, чтобы игра на свободном слоте состоялась
   // Ссылки на посты, которые не надо показывать в эти даты (пост от другой игры остался в примечании).
   // Слот покажется как «Скоро пост о наборе». Новая ссылка в примечании сработает сразу.
-  // Особые события (эпики и т. п.): баннер вверху страницы и большая карточка в их день.
-  // Показываются, пока дата не прошла. Удалите строку, когда событие больше не нужно.
+  // Особые события (эпики и т. п.) на все комнаты сразу: одна строка в «Играют в этот день».
+  // Нужны, когда в таблице они отмечены цветом, который сайт не показывает (например, оранжевым).
   EVENTS: [
     {
       date: '2026-10-31', start: '18:00', end: '22:00',
       title: 'D&D Эпик',
       where: 'во всех трёх комнатах',
       masters: 'Ruslan, Marden, Sokol',
-      closed: true,                    // набор закрыт: вместо кнопки на пост — пометка
-      // post: 'https://t.me/…',       // ссылка на пост, если набор открыт
+      closed: true,                    // пометка «набор закрыт»
     },
   ],
   IGNORE_POSTS: [
@@ -547,7 +528,9 @@ function render() {
   board.textContent = '';
   days.forEach(day => {
     const cards = day.slots.filter(s => s.view !== 'campaign' && s.view !== 'full');
-    const games = day.slots.filter(s => s.view === 'campaign' || s.view === 'full');
+    const games = day.slots.filter(s => s.view === 'campaign' || s.view === 'full')
+      .concat(eventsOn(ymd(day.date)))
+      .sort((a, b) => minutes(a.start) - minutes(b.start));
     const shown = cards.filter(s => s.view === 'free' || s.view === 'recruit' || s.view === 'announce');
     const row = document.createElement('section');
     row.className = 'day';
@@ -591,7 +574,6 @@ function render() {
     });
     const body = document.createElement('div');
     body.className = 'day-body';
-    eventsOn(ymd(day.date)).forEach(ev => body.appendChild(eventCard(ev, false)));
     body.appendChild(list);
     if (games.length) {
       const ul = document.createElement('ul');
@@ -600,8 +582,20 @@ function render() {
       games.forEach(g => {
         const li = document.createElement('li');
         li.innerHTML = `<span class="g-time">${g.start}–${g.end}</span><span class="g-room"></span><span class="g-title"></span>`;
-        li.querySelector('.g-room').textContent = g.room;
-        li.querySelector('.g-room').style.setProperty('--gem', gemColor(g.room));
+        const roomEl = li.querySelector('.g-room');
+        if (g.allRooms) {
+          // Одна игра на все комнаты: по камню каждой комнаты
+          roomEl.classList.add('all');
+          state.rooms.forEach(r => {
+            const gem = document.createElement('i');
+            gem.style.setProperty('--gem', gemColor(r.name));
+            roomEl.appendChild(gem);
+          });
+          roomEl.appendChild(document.createTextNode(g.room));
+        } else {
+          roomEl.textContent = g.room;
+          roomEl.style.setProperty('--gem', gemColor(g.room));
+        }
         const title = li.querySelector('.g-title');
         fillTitle(title, g.title);
         if (g.view === 'full') title.insertAdjacentHTML('beforeend', ' · <span class="g-full">набор закрыт</span>');
@@ -630,32 +624,13 @@ function render() {
   }
 }
 
-// Ближайшие особые события из CONFIG.EVENTS
-function eventsOn(key) { return (CONFIG.EVENTS || []).filter(ev => ev.date === key); }
-function eventCard(ev, banner) {
-  const d = fromYmd(ev.date);
-  const el = document.createElement('div');
-  el.className = banner ? 'event event-top' : 'event';
-  el.innerHTML = `<span class="event-tag">${banner ? 'Скоро эпик' : 'Эпик'}</span>
-    <span class="event-title"></span>
-    <span class="event-when"></span>
-    ${ev.masters ? '<span class="event-masters"></span>' : ''}
-    ${ev.closed ? '<span class="event-closed">Набор закрыт</span>'
-      : ev.post ? '<a class="btn primary event-link" target="_blank" rel="noopener">Подробности в Telegram</a>' : ''}`;
-  fillTitle(el.querySelector('.event-title'), ev.title);
-  el.querySelector('.event-when').textContent =
-    `${banner ? WEEKDAY[mondayIndex(d)] + ', ' + d.getDate() + ' ' + MONTH_OF[d.getMonth()] + ' · ' : ''}${ev.start}–${ev.end}${ev.where ? ' · ' + ev.where : ''}`;
-  if (ev.masters) el.querySelector('.event-masters').textContent = `Мастера: ${ev.masters}`;
-  if (!ev.closed && ev.post) el.querySelector('.event-link').href = ev.post;
-  return el;
-}
-function renderEventBanner() {
-  const today = ymd(new Date());
-  const next = (CONFIG.EVENTS || []).filter(ev => ev.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
-  const box = $('event-banner');
-  box.textContent = '';
-  box.hidden = !next;
-  if (next) box.appendChild(eventCard(next, true));
+// Особые события из CONFIG.EVENTS в виде строк списка «Играют в этот день»
+function eventsOn(key) {
+  return (CONFIG.EVENTS || []).filter(ev => ev.date === key).map(ev => ({
+    start: ev.start, end: ev.end, room: 'Все комнаты', allRooms: true,
+    title: [ev.title, ev.masters].filter(Boolean).join(' '),
+    view: ev.closed ? 'full' : 'campaign',
+  }));
 }
 
 function renderRooms() {
@@ -769,7 +744,6 @@ load()
     state.updated = data.updated;
     $('demo-note').hidden = !state.demo;
     if (state.demo && window.DEMO_NOTE) $('demo-note').innerHTML = window.DEMO_NOTE;
-    renderEventBanner();
     renderRooms();
     render();
   })
