@@ -219,6 +219,7 @@ h1 {
 .event-when::first-letter { text-transform: uppercase; }
 .event-masters { color: var(--muted); font-size: 14px; }
 .event-link { margin-top: 8px; flex: none; }
+.event-closed { margin-top: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-size: 13px; font-weight: 600; }
 .event-top { padding: 18px 20px; }
 .event-top .event-title { font-size: 26px; }
 .soon {
@@ -376,7 +377,8 @@ const CONFIG = {
       title: 'D&D Эпик',
       where: 'во всех трёх комнатах',
       masters: 'Ruslan, Marden, Sokol',
-      post: 'https://t.me/grahmirsdungeon/2377',
+      closed: true,                    // набор закрыт: вместо кнопки на пост — пометка
+      // post: 'https://t.me/…',       // ссылка на пост, если набор открыт
     },
   ],
   IGNORE_POSTS: [
@@ -638,12 +640,13 @@ function eventCard(ev, banner) {
     <span class="event-title"></span>
     <span class="event-when"></span>
     ${ev.masters ? '<span class="event-masters"></span>' : ''}
-    ${ev.post ? '<a class="btn primary event-link" target="_blank" rel="noopener">Подробности в Telegram</a>' : ''}`;
+    ${ev.closed ? '<span class="event-closed">Набор закрыт</span>'
+      : ev.post ? '<a class="btn primary event-link" target="_blank" rel="noopener">Подробности в Telegram</a>' : ''}`;
   fillTitle(el.querySelector('.event-title'), ev.title);
   el.querySelector('.event-when').textContent =
     `${banner ? WEEKDAY[mondayIndex(d)] + ', ' + d.getDate() + ' ' + MONTH_OF[d.getMonth()] + ' · ' : ''}${ev.start}–${ev.end}${ev.where ? ' · ' + ev.where : ''}`;
   if (ev.masters) el.querySelector('.event-masters').textContent = `Мастера: ${ev.masters}`;
-  if (ev.post) el.querySelector('.event-link').href = ev.post;
+  if (!ev.closed && ev.post) el.querySelector('.event-link').href = ev.post;
   return el;
 }
 function renderEventBanner() {
